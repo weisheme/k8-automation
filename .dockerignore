@@ -1,0 +1,15 @@
+.dockerignore
+.git*
+.npm*
+.travis.yml
+**/*.log
+**/*.txt
+**/*~
+C*.md
+node_modules/
+build/test/
+build/typedoc/
+scripts/
+src/
+test/
+ts*.json
