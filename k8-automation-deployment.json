@@ -2,10 +2,10 @@
   "kind": "Deployment",
   "apiVersion": "extensions/v1beta1",
   "metadata": {
-    "name": "automation-seed",
+    "name": "k8-automation",
     "namespace": "default",
     "labels": {
-      "app": "automation-seed"
+      "app": "k8-automation"
     }
   },
   "spec": {
@@ -13,25 +13,25 @@
     "revisionHistoryLimit": 3,
     "selector": {
       "matchLabels": {
-        "app": "automation-seed"
+        "app": "k8-automation"
       }
     },
     "template": {
       "metadata": {
         "labels": {
-          "app": "automation-seed",
+          "app": "k8-automation",
           "version": "0"
         },
         "annotations": {
           "atomist.com/k8vent": "{\"webhooks\":[\"https://webhook.atomist.com/atomist/kube/teams/TEAM_ID\"]}",
-          "atomist.com/repo-image": "{\"repo\":{\"owner\":\"atomist\",\"name\":\"automation-seed-ts\"},\"image\":\"atomist/automation-seed-ts\"}"
+          "atomist.com/repo-image": "{\"repo\":{\"owner\":\"atomist\",\"name\":\"k8-automation\"},\"image\":\"atomist/k8-automation\"}"
         }
       },
       "spec": {
         "containers": [
           {
-            "name": "automation-seed",
-            "image": "atomist/automation-seed-ts:VERSION",
+            "name": "k8-automation",
+            "image": "atomist/k8-automation:VERSION",
             "imagePullPolicy": "IfNotPresent",
             "env": [
               {

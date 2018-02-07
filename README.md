@@ -1,6 +1,7 @@
-# @atomist/automation-seed
+# @atomist/k8-automation
 
-[![Build Status](https://travis-ci.org/atomist/automation-seed-ts.svg?branch=master)](https://travis-ci.org/atomist/automation-seed-ts)
+[![npm version](https://badge.fury.io/js/%40atomist%2Fk8-automation.svg)](https://badge.fury.io/js/%40atomist%2Fk8-automation)
+[![Build Status](https://travis-ci.org/atomist/k8-automation.svg?branch=master)](https://travis-ci.org/atomist/k8-automation)
 
 This repository contains examples demonstrating use of
 the [Atomist][atomist] API.  You will find examples illustrating:
@@ -85,8 +86,8 @@ To get started run the following commands to clone the project,
 install its dependencies, and build the project:
 
 ```console
-$ git clone git@github.com:atomist/automation-seed-ts.git
-$ cd automation-seed-ts
+$ git clone git@github.com:atomist/k8-automation.git
+$ cd k8-automation
 $ npm install
 $ npm run build
 ```
@@ -147,7 +148,7 @@ following command
 
 ```console
 $ docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAM=TEAM_ID \
-    atomist/automation-seed-ts:VERSION
+    atomist/k8-automation:VERSION
 ```
 
 replacing `YOUR_TOKEN` and `TEAM_ID` with the token and team ID from
@@ -157,7 +158,7 @@ Note that this will not be running any code from your local machine
 but the code in the Docker image.
 
 To run the Docker image in a Kubernetes cluster, you can use the
-[deployment spec](automation-seed-deployment.json) from this
+[deployment spec](k8-automation-deployment.json) from this
 repository, replacing `YOUR_TOKEN`, `TEAM_ID` (twice!), and `VERSION`
 in the spec as above in the Docker run command, and running the
 following command
@@ -166,64 +167,7 @@ following command
 $ kubectl create -f automation-seed-deployment.json
 ```
 
-[latest]: https://github.com/atomist/automation-seed-ts/releases/latest
-
-## Invoking a command handler from Slack
-
-This project contains the code to create and respond to a simple
-`hello world` bot command.  The code that defines the bot command and
-implements responding to the command, i.e., the _command handler_, can
-be found in [`HelloWorld.ts`][hello].  Once you have your local
-automation client running (the previous step in this guide), you can
-invoke the command handler by sending the Atomist bot the command as a
-message.  Be sure the Atomist bot is in the channel before sending it
-the message.
-
-```
-/invite @atomist
-@atomist hello world
-```
-
-Once you've submitted the command in Slack, you'll see the incoming
-and outgoing messages show up in the logs of your locally running
-automation-client.  Ultimately, you should see the response from the
-bot in Slack.
-
-[hello]: https://github.com/atomist/automation-seed-ts/blob/master/src/commands/HelloWorld.ts (HelloWorld Command Handler)
-
-Feel free to modify the code in the `HelloWorld` command handler,
-Node.js will automatically reload the client, and see what happens!
-
-## Triggering an event handler
-
-While command handlers respond to commands you send the Atomist bot,
-_event handlers_ take action when different types of events occur in
-your development and operations environment.  Some examples of events
-are commits pushed to a repo, or a CI build that fails, or an instance
-of a running service that becomes unhealthy.  Example responses to those
-events are showing the commits in a Slack message, automatically
-restarting the build, and triggering a PagerDuty alert, respectively.
-
-The sample event handler in this project, [NotifyOnPush][nop-handler],
-will notice when someone pushes new commits to a repository in the
-GitHub organization and send a notice of that push to all Slack
-channels associated with that repository.
-
-If you have followed the instructions above and are running these
-automations against the atomist-playground Slack team and GitHub
-organization, go ahead and edit the [notify-on-push][nop-repo]
-repository by adding some text to its [README][nop-readme].  Once you
-have saved your changes, you should see that event appear in the
-console logs of your locally running automation client, followed by a
-log of the actions the event handler is taking.  Once those actions
-are complete, you should see a new message in the
-[`#notify-on-push`][nop-channel] channel in the atomist-playground
-Slack team.
-
-[nop-handler]: https://github.com/atomist/automation-seed-ts/blob/master/src/events/NotifyOnPush.ts (Atomist NotifyOnPush Event Handler)
-[nop-repo]: https://github.com/atomist-playground/notify-on-push (Atomist NotifyOnPush Repository)
-[nop-readme]: https://github.com/atomist-playground/notify-on-push/edit/master/README.md (Edit NotifyOnPush README)
-[nop-channel]: https://atomist-playground.slack.com/messages/C7GNF6743/ (NotifyOnPush Slack Channel)
+[latest]: https://github.com/atomist/k8-automation/releases/latest
 
 ## Support
 
@@ -233,7 +177,7 @@ at [atomist-community.slack.com][slack].
 
 If you find a problem, please create an [issue][].
 
-[issue]: https://github.com/atomist/automation-seed-ts/issues
+[issue]: https://github.com/atomist/k8-automation/issues
 
 ## Development
 
