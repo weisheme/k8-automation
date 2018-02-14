@@ -1,0 +1,13 @@
+{
+  "kind": "Ingress",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "name": "spring-rest"
+  },
+  "spec": {
+    "backend": {
+      "serviceName": "spring-rest",
+      "servicePort": 8080
+    }
+  }
+}

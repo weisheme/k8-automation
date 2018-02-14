@@ -1,0 +1,20 @@
+subscription GoogleContainerBuilderSub {
+  Push {
+    branch
+    after {
+      sha
+    }
+    repo {
+      name
+      org {
+        owner
+        provider {
+          providerId
+        }
+        team {
+          id
+        }
+      }
+    }
+  }
+}
