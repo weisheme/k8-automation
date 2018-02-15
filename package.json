@@ -20,6 +20,7 @@
   "dependencies": {
     "@atomist/automation-client": "^0.6.6",
     "@google-cloud/storage": "^1.5.2",
+    "@octokit/rest": "^14.0.9",
     "app-root-path": "^2.0.1",
     "axios": "https://atomist.jfrog.io/atomist/npm-dev/axios/-/axios-0.17.1-proxy-fix.tgz",
     "child-process-promise": "^2.2.1",

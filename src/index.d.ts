@@ -21,5 +21,5 @@ declare module "tmp-promise" {
         path: string;
         cleanup(): void;
     }
-    export function dir(): Promise<TmpDir>;
+    export function dir(options?: any): Promise<TmpDir>;
 }

@@ -1,17 +1,8 @@
 /*
  * Copyright © 2018 Atomist, Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * See the LICENSE file in the root of this repository for licensing
+ * information.
  */
 
 import {
@@ -24,167 +15,146 @@ import {
     HandlerContext,
     HandlerResult,
     logger,
+    Secret,
+    Secrets,
     Success,
     success,
     Tags,
 } from "@atomist/automation-client";
-
+import * as Storage from "@google-cloud/storage";
+import * as Github from "@octokit/rest";
 import * as appRoot from "app-root-path";
 import { exec } from "child-process-promise";
 import * as fs from "fs-extra";
+import { JWT } from "google-auth-library";
 import { google } from "googleapis";
+import * as stringify from "json-stringify-safe";
 import * as path from "path";
 import * as tmp from "tmp-promise";
 
+import { postBuildWebhook, postLinkImageWebhook } from "../atomistWebhook";
+import { createCommitStatus } from "../github";
+import { googleContainerBuild, imageTag, preErrMsg } from "../googleContainerBuilder";
 import { GoogleContainerBuilderSub } from "../typings/types";
-import { postBuildWebhook, postLinkImageWebhook } from "./atomistWebhook";
-import { gcBuilder } from "./googleCloudBuilder";
 
 @EventHandler("use Google Container Builder to build a Docker image for Spring Boot apps",
     GraphQL.subscriptionFromFile("googleContainerBuilder", __dirname))
 @Tags("push", "ci", "docker", "spring")
 export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilderSub.Subscription> {
 
-    public handle(e: EventFired<GoogleContainerBuilderSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
+    @Secret(Secrets.OrgToken)
+    private githubToken: string;
 
-        let googleCloudKey: any;
-        try {
-            // tslint:disable-next-line:no-var-requires
-            googleCloudKey = require(`${appRoot}/../creds/ri-gcb.json`);
-        } catch (e) {
-            logger.warn("no Google Cloud service account key, will not perform Google Container builds");
-            return Promise.resolve(Success);
-        }
-        const jwtClient = new google.auth.JWT(
-            googleCloudKey.client_email,
-            null,
-            googleCloudKey.private_key,
-            ["https://www.googleapis.com/auth/cloud-platform"],
-            null,
-        );
+    public handle(ev: EventFired<GoogleContainerBuilderSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
-        return jwtClient.authorize()
-            .then(tokens => validateAndBuild(e, tokens), err => {
-                logger.error("failed to authenticate with Google: %j", err);
-                return Failure;
-            });
+        return Promise.all(ev.data.Push.map(p => {
+
+            if (!eligiblePush(p)) {
+                logger.info("push is not eligible for GoogleContainerBuilder");
+                return Promise.resolve(Success);
+            }
+
+            const github = new Github();
+            try {
+                github.authenticate({
+                    type: "token",
+                    token: this.githubToken,
+                });
+            } catch (e) {
+                logger.warn("failed to authenticate with GitHub using token, with not perform " +
+                    `Google Container builds: ${e.message}`);
+                return Promise.resolve(Success);
+            }
+
+            let googleCloudKey: Storage.Credentials;
+            try {
+                // tslint:disable-next-line:no-var-requires
+                googleCloudKey = require(`${appRoot}/../creds/ri-ci-1.json`);
+            } catch (e) {
+                logger.warn("no Google Cloud service account key, will not perform Google Container builds: " +
+                    e.message);
+                return Promise.resolve(Success);
+            }
+            const jwtClient = new google.auth.JWT(
+                googleCloudKey.client_email,
+                null,
+                googleCloudKey.private_key,
+                ["https://www.googleapis.com/auth/cloud-platform"],
+                null,
+            );
+
+            return jwtClient.authorize()
+                .then(tokens => cloneAndBuild(p, jwtClient, github), e => {
+                    logger.warn("failed to authorize with Google Cloud, will not perform Google Container builds: " +
+                        e.message);
+                    return Success;
+                });
+        }))
+            .then(results => results.some(res => res === Failure) ? Failure : Success, failure);
     }
 }
 
 /**
- * Ensure event(s) has all the needed information, then build.
+ * Make sure even has all the data it needs to GoogleContainerBuilder.
+ *
+ * @param e event
  */
-function validateAndBuild(e: EventFired<GoogleContainerBuilderSub.Subscription>, tokens: any): Promise<HandlerResult> {
-
-    return Promise.all(e.data.Push.map(p => {
-        if (!p.branch) {
-            logger.debug("no branch");
-            return Success;
-        }
-        if (!p.repo) {
-            logger.debug("no repo");
-            return Success;
-        }
-        const repo = p.repo.name;
-        if (!repo) {
-            logger.debug("no repo name");
-            return Success;
-        }
-        if (!p.repo.org) {
-            logger.debug("no org");
-            return Success;
-        }
-        const owner = p.repo.org.owner;
-        if (!owner) {
-            logger.debug("no org owner");
-            return Success;
-        }
-        if (!p.after) {
-            logger.debug("no after commit");
-            return Success;
-        }
-        const repoSlug = `${owner}/${repo}`;
-        const sha = p.after.sha;
-        if (!sha) {
-            logger.debug("no after commit sha");
-            return Success;
-        }
-        const gitHubComProviderId = "zjlmxjzwhurspem";
-        const providerId = (p.repo.org.provider && p.repo.org.provider.providerId) ?
-            p.repo.org.provider.providerId : gitHubComProviderId;
-        if (providerId !== gitHubComProviderId) {
-            logger.info(`repo ${repoSlug} is not provided by github.com`);
-            return Success;
-        }
-        if (!p.repo.org.team) {
-            logger.debug("no team");
-            return Success;
-        }
-        const teamId = p.repo.org.team.id;
-        if (!teamId) {
-            logger.info("team has no ID");
-            return Success;
-        }
-
-        return cloneAndBuild(owner, repo, p.branch, sha, teamId, tokens)
-            .catch(err => {
-                logger.error("uncaught error from cloneAndBuild: %j", err);
-                return Failure;
-            });
-    }))
-        .then(results => results.some(res => res === Failure) ? Failure : Success, failure);
+function eligiblePush(p: GoogleContainerBuilderSub.Push): boolean {
+    const defaultBranch = p.repo.defaultBranch || "master";
+    if (p.branch !== defaultBranch) {
+        return false;
+    }
+    return true;
 }
 
 /**
- * Clone Git repo in temp directory and checkout commit, then build.
+ * Clone Git repo in temp directory and checkout commit, then call checkAndBuild.
  *
- * @param owner repo owner
- * @param repo repo name
- * @param branch commit branch
- * @param commit commit SHA
- * @param teamId ID of Atomist team
- * @param token Google tokens
+ * @param p push event
+ * @param jwtClient Google Cloud JWT client
+ * @param github authenticated Github @octokit/rest client
  * @return handler result
  */
 export function cloneAndBuild(
-    owner: string,
-    repo: string,
-    branch: string,
-    commit: string,
-    teamId: string,
-    tokens: any,
+    p: GoogleContainerBuilderSub.Push,
+    jwtClient: JWT,
+    github: Github,
 ): Promise<HandlerResult> {
 
+    const branch = p.branch;
+    const repo = p.repo.name;
+    const owner = p.repo.org.owner;
     const repoSlug = `${owner}/${repo}`;
-    return tmp.dir()
+    const sha = p.after.sha;
+    const teamId = p.repo.org.team.id;
+
+    return tmp.dir({ unsafeCleanup: true })
+        .catch(e => Promise.reject(preErrMsg(e, `failed to create temp dir for ${repoSlug}`)))
         .then(tmpDir => {
             const projectDir = path.join(tmpDir.path, repo);
             const cloneUrl = `https://github.com/${repoSlug}.git`;
             const cloneCmd = `git clone --quiet --depth 10 --branch ${branch} ${cloneUrl} ${repo}`;
             return exec(cloneCmd, { cwd: tmpDir.path })
                 .then(() => {
-                    return exec(`git checkout -qf ${commit}`, { cwd: tmpDir.path })
+                    return exec(`git checkout --quiet --force ${sha}`, { cwd: projectDir })
                         .then(() => {
-                            return checkAndBuild(projectDir, owner, repo, branch, commit, teamId, tokens)
-                                .catch(err => {
-                                    logger.error("build of %s:%s:%s failed: %j", repoSlug, branch, commit, err);
+                            return checkAndBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github)
+                                .catch(e => {
+                                    logger.error(`build of ${repoSlug}:${sha} failed: ${e.message}`);
                                     return Failure;
                                 });
-                        }, err => {
-                            logger.warn("failed to check out %s %s, skipping: %j", repoSlug, commit, err);
+                        }, e => {
+                            logger.warn(`failed to check out ${repoSlug}:${sha}, skipping: ${e.message}`);
                             return Success;
                         });
-                }, err => {
-                    logger.warn("failed to clone %s, assuming private repo, skipping: %j", repoSlug, err);
+                }, e => {
+                    logger.warn(`failed to clone ${repoSlug}, assuming private repo, skipping: ${e.message}`);
                     return Success;
                 })
                 .then(res => {
                     tmpDir.cleanup();
                     return res;
                 });
-        }, err => {
-            logger.error("failed to create temporary directory: %j", err);
-            return Failure;
         });
 }
 
@@ -195,9 +165,10 @@ export function cloneAndBuild(
  * @param owner repo owner
  * @param repo repo name
  * @param branch commit branch
- * @param commit commit SHA
+ * @param sha commit SHA
  * @param teamId ID of Atomist team
- * @param tokens Google Cloud tokens
+ * @param jwtClient Google Cloud JWT client
+ * @param github authenticated Github @octokit/rest client
  * @return handler result
  */
 export function checkAndBuild(
@@ -205,25 +176,30 @@ export function checkAndBuild(
     owner: string,
     repo: string,
     branch: string,
-    commit: string,
+    sha: string,
     teamId: string,
-    tokens: any,
+    jwtClient: JWT,
+    github: Github,
 ): Promise<HandlerResult> {
 
     const repoSlug = `${owner}/${repo}`;
     return gcbEligible(projectDir)
+        .catch(e => Promise.reject(preErrMsg(e, `failed to check eligibility of ${repoSlug}`)))
         .then(eligible => {
             if (!eligible) {
-                logger.debug("repo %s does not meet GCB eligibility", repoSlug);
+                logger.debug(`repo ${repoSlug} does not meet GCB eligibility`);
                 return Success;
             }
-            return gcBuild(projectDir, owner, repo, branch, commit, teamId, tokens);
-        }, err => {
-            logger.error("failed to check eligibility of %s: %j", repoSlug, err);
-            return Failure;
+            return gcBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github);
         });
 }
 
+/**
+ * Run through a series of checks to ensure cloned project is worthy of a Google Container Build.
+ *
+ * @param projectDir local path to cloned repo
+ * @return true if eligible
+ */
 export function gcbEligible(projectDir: string): Promise<boolean> {
     const buildTrigger = path.join(projectDir, ".atm-gcb");
     const pomPath = path.join(projectDir, "pom.xml");
@@ -237,20 +213,21 @@ export function gcbEligible(projectDir: string): Promise<boolean> {
         () => fs.readFile(pomPath).then(pom => springRegExp.test(pom.toLocaleString())),
     ];
     return Promise.all(checks.map(f => f()))
-        .then(results => !results.some(r => !r));
+        .then(results => results.every(r => r));
 }
 
 /**
  * Build the project in projectDir, sending build and link-image webhooks
  * along the way.
  *
- * @param projectDir file system location of the project to buidl
+ * @param projectDir file system location of the project to build
  * @param owner repo owner
  * @param repo repo name
  * @param branch commit branch
- * @param commit commit SHA
+ * @param sha commit SHA
  * @param teamId ID of Atomist team
- * @param tokens Google Cloud tokens
+ * @param jwtClient Google Cloud JWT client
+ * @param github authenticated Github @octokit/rest client
  * @return handler result
  */
 export function gcBuild(
@@ -258,32 +235,37 @@ export function gcBuild(
     owner: string,
     repo: string,
     branch: string,
-    commit: string,
+    sha: string,
     teamId: string,
-    tokens: any,
+    jwtClient: JWT,
+    github: Github,
 ): Promise<HandlerResult> {
 
     const repoSlug = `${owner}/${repo}`;
     const ciSrc = path.join(appRoot.path, "assets", "ci");
+
     return fs.copy(ciSrc, projectDir)
+        .catch(e => Promise.reject(preErrMsg(e, `failed to copy ${ciSrc} to ${projectDir}`)))
         .then(() => {
-            // post start build webhook, do not wait
-            postBuildWebhook(repo, owner, branch, commit, "started", teamId);
-            return gcBuilder();
+            const status = "started";
+            postBuildWebhook(owner, repo, branch, sha, status, teamId);
+            createCommitStatus(owner, repo, sha, status, github);
+            return googleContainerBuild(projectDir, owner, repo, sha, jwtClient);
         })
         .then(status => {
+            logger.debug(`${repoSlug}:${sha} build status: ${status}`);
             if (status === "passed") {
-                const image = "something/here:latest";
-                // post link-image webhook, do not wait
-                postLinkImageWebhook(owner, repo, commit, image, teamId);
+                const image = imageTag(owner, repo, sha);
+                postLinkImageWebhook(owner, repo, sha, image, teamId);
             }
-            // post build success webhook, do not wait
-            postBuildWebhook(repo, owner, branch, commit, status, teamId);
+            postBuildWebhook(owner, repo, branch, sha, status, teamId);
+            createCommitStatus(owner, repo, sha, status, github);
             return Success;
         })
-        .catch((err: any) => {
-            logger.error("build of %s in %s errored: %j", repoSlug, projectDir, err);
-            postBuildWebhook(repo, owner, branch, commit, "error", teamId);
-            return Failure;
+        .catch(e => {
+            const status = "error";
+            postBuildWebhook(owner, repo, branch, sha, status, teamId);
+            createCommitStatus(owner, repo, sha, status, github);
+            return Promise.reject(preErrMsg(e, `build of ${repoSlug} in ${projectDir} errored`));
         });
 }

@@ -1,5 +1,13 @@
+/*
+ * Copyright © 2018 Atomist, Inc.
+ *
+ * See the LICENSE file in the root of this repository for licensing
+ * information.
+ */
+
 import { logger } from "@atomist/automation-client";
 import axios from "axios";
+import * as stringify from "json-stringify-safe";
 import promiseRetry = require("promise-retry");
 
 export interface AtomistBuildRepository {
@@ -93,7 +101,7 @@ export interface AtomistLinkImage {
  *
  * @param owner repository owner, i.e., user or organization
  * @param repo name of repository
- * @param commit commit SHA
+ * @param sha commit SHA
  * @param image Docker image tag, e.g., registry.com/owner/repo:version
  * @param teamId Atomist team ID
  * @param retryOptions change default retry options
@@ -102,7 +110,7 @@ export interface AtomistLinkImage {
 export function postLinkImageWebhook(
     owner: string,
     repo: string,
-    commit: string,
+    sha: string,
     image: string,
     teamId: string,
     retryOptions = DefaultRetryOptions,
@@ -112,7 +120,7 @@ export function postLinkImageWebhook(
         git: {
             owner,
             repo,
-            sha: commit,
+            sha,
         },
         docker: {
             image,
@@ -142,16 +150,17 @@ export function postWebhook(
     const baseUrl = process.env.ATOMIST_WEBHOOK_BASEURL || "https://webhook.atomist.com";
     const url = `${baseUrl}/atomist/${webhook}/teams/${teamId}`;
     return promiseRetry(retryOptions, (retry, retryCount) => {
-        logger.debug("posting '%j' to '%s' attempt %d", payload, url, retryCount);
+        logger.debug("posting '%s' to '%s' attempt %d", stringify(payload), url, retryCount);
         return axios.post(url, payload)
             .then(() => true)
-            .catch(err => {
-                logger.debug("error posting '%j' to '%s': %j", payload, url, err);
-                retry(err);
+            .catch(e => {
+                logger.debug("error posting '%s' to '%s' attempt %d: %s", stringify(payload), url, retryCount,
+                    e.message);
+                retry(e);
             });
     })
-        .catch(err => {
-            logger.error("failed to post '%j' to '%s': %j", payload, url, err);
+        .catch(e => {
+            logger.error("failed to post '%s' to '%s': %s", stringify(payload), url, e.message);
             return false;
         });
 }

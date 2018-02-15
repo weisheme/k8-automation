@@ -1,4 +1,4 @@
-FROM openjdk:9
+FROM openjdk:8
 
 MAINTAINER David Dooling <david@atomist.com>
 

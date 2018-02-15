@@ -1,18 +1,19 @@
 subscription GoogleContainerBuilderSub {
   Push {
-    branch
-    after {
-      sha
+    branch @required
+    after @required {
+      sha @required
     }
-    repo {
-      name
-      org {
-        owner
-        provider {
+    repo @required {
+      name @required
+      defaultBranch
+      org @required {
+        owner @required
+        provider(providerId: "zjlmxjzwhurspem") @required {
           providerId
         }
-        team {
-          id
+        team @required {
+          id @required
         }
       }
     }
