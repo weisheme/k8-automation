@@ -25,7 +25,7 @@
     "axios": "https://atomist.jfrog.io/atomist/npm-dev/axios/-/axios-0.17.1-proxy-fix.tgz",
     "child-process-promise": "^2.2.1",
     "fs-extra": "^5.0.0",
-    "googleapis": "https://atomist.jfrog.io/atomist/npm-dev/googleapis/-/googleapis-26.0.0.tgz",
+    "googleapis": "^26.0.1",
     "json-stringify-safe": "^5.0.1",
     "promise-retry": "^1.1.1",
     "tar": "^4.3.3",
