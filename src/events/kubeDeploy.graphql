@@ -1,0 +1,25 @@
+subscription KubeDeploySub {
+	ImageLinked {
+    image @required {
+      imageName @required
+    }
+    commit @required {
+      repo @required {
+        name @required
+        org @required {
+          owner @required
+          provider(providerId: "zjlmxjzwhurspem") @required {
+          	providerId
+          }
+          team @required {
+          	id @required
+          }
+        }
+      }
+      statuses @required {
+        context @required
+        state @required
+      }
+    }
+  }
+}

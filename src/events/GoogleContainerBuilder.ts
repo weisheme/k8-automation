@@ -33,8 +33,9 @@ import * as path from "path";
 import * as tmp from "tmp-promise";
 
 import { postBuildWebhook, postLinkImageWebhook } from "../atomistWebhook";
+import { preErrMsg, reduceResults } from "../error";
 import { createCommitStatus } from "../github";
-import { googleContainerBuild, imageTag, preErrMsg } from "../googleContainerBuilder";
+import { googleContainerBuild, imageTag } from "../googleContainerBuilder";
 import { GoogleContainerBuilderSub } from "../typings/types";
 
 @EventHandler("use Google Container Builder to build a Docker image for Spring Boot apps",
@@ -47,41 +48,41 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
 
     public handle(ev: EventFired<GoogleContainerBuilderSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
+        const github = new Github();
+        try {
+            github.authenticate({
+                type: "token",
+                token: this.githubToken,
+            });
+        } catch (e) {
+            logger.warn("failed to authenticate with GitHub using token, with not perform " +
+                `Google Container builds: ${e.message}`);
+            return Promise.resolve(Success);
+        }
+
+        let googleCloudKey: Storage.Credentials;
+        try {
+            // tslint:disable-next-line:no-var-requires
+            googleCloudKey = require(path.join(appRoot.path, "..", "creds", "gcb", "ri-ci-1.json"));
+        } catch (e) {
+            logger.warn("no Google Cloud service account key, will not perform Google Container builds: " +
+                e.message);
+            return Promise.resolve(Success);
+        }
+        const jwtClient = new google.auth.JWT(
+            googleCloudKey.client_email,
+            null,
+            googleCloudKey.private_key,
+            ["https://www.googleapis.com/auth/cloud-platform"],
+            null,
+        );
+
         return Promise.all(ev.data.Push.map(p => {
 
             if (!eligiblePush(p)) {
                 logger.info("push is not eligible for GoogleContainerBuilder");
                 return Promise.resolve(Success);
             }
-
-            const github = new Github();
-            try {
-                github.authenticate({
-                    type: "token",
-                    token: this.githubToken,
-                });
-            } catch (e) {
-                logger.warn("failed to authenticate with GitHub using token, with not perform " +
-                    `Google Container builds: ${e.message}`);
-                return Promise.resolve(Success);
-            }
-
-            let googleCloudKey: Storage.Credentials;
-            try {
-                // tslint:disable-next-line:no-var-requires
-                googleCloudKey = require(`${appRoot}/../creds/ri-ci-1.json`);
-            } catch (e) {
-                logger.warn("no Google Cloud service account key, will not perform Google Container builds: " +
-                    e.message);
-                return Promise.resolve(Success);
-            }
-            const jwtClient = new google.auth.JWT(
-                googleCloudKey.client_email,
-                null,
-                googleCloudKey.private_key,
-                ["https://www.googleapis.com/auth/cloud-platform"],
-                null,
-            );
 
             return jwtClient.authorize()
                 .then(tokens => cloneAndBuild(p, jwtClient, github), e => {
@@ -90,7 +91,7 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
                     return Success;
                 });
         }))
-            .then(results => results.some(res => res === Failure) ? Failure : Success, failure);
+            .then(results => reduceResults(results));
     }
 }
 
@@ -102,6 +103,7 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
 function eligiblePush(p: GoogleContainerBuilderSub.Push): boolean {
     const defaultBranch = p.repo.defaultBranch || "master";
     if (p.branch !== defaultBranch) {
+        logger.debug(`${p.repo.org.owner}/${p.repo.name} push branch ${p.branch} is not default ${defaultBranch}`);
         return false;
     }
     return true;

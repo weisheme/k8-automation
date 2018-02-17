@@ -19,6 +19,7 @@ import * as util from "util";
 import { v4 as uuidv4 } from "uuid";
 
 import { AtomistBuildStatus } from "./atomistWebhook";
+import { preErrMsg } from "./error";
 
 type BuildStatus = "STATUS_UNKNOWN" | "QUEUED" | "WORKING" | "SUCCESS" | "FAILURE" |
     "INTERNAL_ERROR" | "TIMEOUT" | "CANCELLED";
@@ -151,18 +152,6 @@ interface BuildPayload {
 
 function nodeFilter(p: string, stat: tar.FileStat): boolean {
     return !(/\.tgz$/.test(p) || p.includes("node_modules"));
-}
-
-/**
- * Prepend message to (e: Error).message.
- *
- * @param e original Error
- * @param prefix text to prepend to e.message
- * @return e with modified message
- */
-export function preErrMsg(e: Error, prefix: string): Error {
-    e.message = `${prefix}: ${e.message}`;
-    return e;
 }
 
 const projectId = "reference-implementation-1";

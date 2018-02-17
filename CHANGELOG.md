@@ -18,5 +18,7 @@ Initial release
 ### Added
 
 -   Google Container Builder CI [#3][3]
+-   GKE deployment [#1][1]
 
 [3]: https://github.com/atomist/k8-automation/issues/3
+[1]: https://github.com/atomist/k8-automation/issues/1

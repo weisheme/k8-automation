@@ -27,6 +27,7 @@
     "fs-extra": "^5.0.0",
     "googleapis": "^26.0.1",
     "json-stringify-safe": "^5.0.1",
+    "kubernetes-client": "^4.0.0",
     "promise-retry": "^1.1.1",
     "tar": "^4.3.3",
     "tmp-promise": "^1.0.4",

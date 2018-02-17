@@ -13,6 +13,8 @@ import { AtomistBuildStatus } from "./atomistWebhook";
 
 type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
 
+export const GoogleContainerBuilderContext = "continuous-integration/atomist/google-container-builder";
+
 /**
  * Create GitHub commit status, mapping AtomistBuildStatus to GitHub
  * commit status state.  It will retry.
@@ -35,7 +37,7 @@ export function createCommitStatus(
 
     const repoSlug = `${owner}/${repo}`;
     const description = "Atomist Continuous Integration for Google Container Builder";
-    const context = "continuous-integration/atomist/google-container-builder";
+    const context = GoogleContainerBuilderContext;
     let state: GitHubCommitStatusState; // Github.RepoCreateStatusParams.state;
     switch (status) {
         case "started":
