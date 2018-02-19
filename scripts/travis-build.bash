@@ -4,7 +4,7 @@
 set -o pipefail
 
 declare Pkg=travis-build-node
-declare Version=1.5.1
+declare Version=1.5.1-k8
 
 # write message to standard out (stdout)
 # usage: msg MESSAGE
@@ -345,6 +345,12 @@ function main () {
                 ;;
         esac
     done
+
+    msg "fixing kubernetes-client types"
+    if ! cp assets/index.d.ts-k8 node_modules/kubernetes-client/typings/index.d.ts; then
+        err "failed to copy kubernetes-client types"
+        return 1
+    fi
 
     msg "running compile"
     if ! npm run compile; then
