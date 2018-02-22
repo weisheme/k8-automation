@@ -24,7 +24,7 @@
         },
         "annotations": {
           "atomist.com/k8vent": "{\"webhooks\":[\"https://webhook.atomist.com/atomist/kube/teams/TEAM_ID\"]}",
-          "atomist.com/repo-image": "{\"repo\":{\"owner\":\"atomist\",\"name\":\"k8-automation\"},\"image\":\"atomist/k8-automation\"}"
+          "atomist.com/repo-image": "[{\"repo\":{\"owner\":\"atomist\",\"name\":\"k8-automation\"},\"image\":\"atomist/k8-automation\"}]"
         }
       },
       "spec": {
