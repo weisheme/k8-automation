@@ -81,13 +81,15 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
                 logger.info("push is not eligible for GKE deploy");
                 return Promise.resolve(Success);
             }
-            const ns = il.commit.repo.org.owner;
-            const name = il.commit.repo.name;
+            const owner = il.commit.repo.org.owner;
+            const repo = il.commit.repo.name;
+            const teamId = il.commit.repo.org.team.id;
             const image = il.image.imageName;
+            const env = "testing";
 
-            return upsertDeployment(k8Config, ns, name, image)
+            return upsertDeployment(k8Config, owner, repo, teamId, image, env)
                 .then(() => Success, e => {
-                    const message = `failed to deploy ${ns}/${name} image ${image}: ${e.message}`;
+                    const message = `failed to deploy image ${image}: ${e.message}`;
                     logger.error(message);
                     return { code: Failure.code, message };
                 });

@@ -1,0 +1,25 @@
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "hostname",
+    "namespace": "default",
+    "labels": {
+      "service": "hostname"
+    }
+  },
+  "spec": {
+    "selector": {
+      "app": "hostname"
+    },
+    "ports": [
+      {
+        "protocol": "TCP",
+        "port": 80,
+        "targetPort": "http"
+      }
+    ],
+    "sessionAffinity": "None",
+    "type": "NodePort"
+  }
+}
