@@ -407,6 +407,8 @@ function createDeployment(
             .catch(e => Promise.reject(preErrMsg(e, `failed to create deployment: ${stringify(dep)}`))));
 }
 
+const creator = "atomist/k8-automation";
+
 /**
  * Create namespace resource.
  *
@@ -448,6 +450,7 @@ function deploymentTemplate(name: string, owner: string, repo: string, teamId: s
                 app: repo,
                 owner,
                 teamId,
+                creator,
             },
             annotations: {
                 "atomist.com/k8vent": `{"webhooks":["https://webhook.atomist.com/atomist/kube/teams/${teamId}"]}`,
@@ -471,6 +474,7 @@ function deploymentTemplate(name: string, owner: string, repo: string, teamId: s
                         app: repo,
                         owner,
                         teamId,
+                        creator,
                     },
                 },
                 spec: {
@@ -555,6 +559,7 @@ function serviceTemplate(name: string, owner: string, repo: string, teamId: stri
                 service: repo,
                 owner,
                 teamId,
+                creator,
             },
         },
         spec: {
@@ -594,6 +599,7 @@ function ingressServiceTemplate(name: string): Service {
             labels: {
                 service: name,
                 ingress: "global",
+                creator,
             },
         },
         spec: {
@@ -686,6 +692,7 @@ function endpointsTemplate(name: string, svc: Service): Endpoints {
             labels: {
                 service: name,
                 ingress: "global",
+                creator,
             },
         },
         subsets: [
