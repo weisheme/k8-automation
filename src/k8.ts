@@ -438,11 +438,21 @@ function namespaceTemplate(owner: string, teamId: string, env: string): Namespac
  * @return deployment resource
  */
 function deploymentTemplate(name: string, owner: string, repo: string, teamId: string, image: string): Deployment {
+    const baseImage = image.split(":")[0];
     const d: Deployment = {
         apiVersion: "extensions/v1beta1",
         kind: "Deployment",
         metadata: {
             name,
+            labels: {
+                app: repo,
+                owner,
+                teamId,
+            },
+            annotations: {
+                "atomist.com/k8vent": `{"webhooks":["https://webhook.atomist.com/atomist/kube/teams/${teamId}"]}`,
+                "atomist.com/repo-image": `[{"repo":{"owner":"${owner}","name":"${repo}"},"image":"${baseImage}"}]`,
+            },
         },
         spec: {
             replicas: 1,
