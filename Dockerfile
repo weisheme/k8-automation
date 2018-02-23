@@ -24,4 +24,4 @@ EXPOSE 2866
 
 ENTRYPOINT ["dumb-init", "node", "--trace-warnings", "--expose_gc", "--optimize_for_size", "--always_compact", "--max_old_space_size=256"]
 
-CMD ["node_modules/@atomist/automation-client/start.client.js"]
+CMD ["build/src/start.client.js"]

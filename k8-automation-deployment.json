@@ -87,7 +87,7 @@
           }
         ],
         "restartPolicy": "Always",
-        "terminationGracePeriodSeconds": 180,
+        "terminationGracePeriodSeconds": 30,
         "dnsPolicy": "ClusterFirst"
       }
     },
