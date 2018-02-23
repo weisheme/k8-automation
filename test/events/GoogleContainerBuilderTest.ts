@@ -29,7 +29,6 @@ describe("GoogleContainerBuilder", () => {
                             commit: {
                                 sha: "b4e9412dcbaea4ffb5310c34b77637c5f3418b10",
                                 repo: {
-                                    defaultBranch: "master",
                                     name: "gcb1",
                                     org: {
                                         owner: "atomist-playground",

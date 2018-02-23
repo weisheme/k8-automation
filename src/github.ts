@@ -22,7 +22,7 @@ import { AtomistBuildStatus } from "./atomistWebhook";
 
 type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
 
-export const atomistKubeBuildContext = "build/atomist/k8s";
+export const kubeBuildContextPrefix = "build/atomist/k8s/";
 
 /**
  * Create GitHub commit status for Atomist Kubernetes build, mapping
@@ -41,13 +41,13 @@ export function createBuildCommitStatus(
     repo: string,
     sha: string,
     status: AtomistBuildStatus,
+    context: string,
     github: Github,
     url?: string,
 ): Promise<boolean> {
 
     const repoSlug = `${owner}/${repo}`;
     const description = "Atomist continuous integration build for Google Container Builder";
-    const context = atomistKubeBuildContext;
     let state: GitHubCommitStatusState; // Github.RepoCreateStatusParams.state;
     switch (status) {
         case "started":

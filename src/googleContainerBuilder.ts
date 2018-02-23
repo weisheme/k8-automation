@@ -30,7 +30,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { AtomistBuildStatus, postBuildWebhook } from "./atomistWebhook";
 import { preErrMsg } from "./error";
-import { createBuildCommitStatus } from "./github";
+import { createBuildCommitStatus, kubeBuildContextPrefix } from "./github";
 
 type BuildStatus = "STATUS_UNKNOWN" | "QUEUED" | "WORKING" | "SUCCESS" | "FAILURE" |
     "INTERNAL_ERROR" | "TIMEOUT" | "CANCELLED";
@@ -281,8 +281,9 @@ export function googleContainerBuild(
             const buildResponse: BuildResource = createResponse.data.metadata.build;
             if (buildResponse.logUrl) {
                 const status = "started";
+                const context = `${kubeBuildContextPrefix}${branch}`;
                 postBuildWebhook(owner, repo, branch, sha, status, teamId, buildResponse.logUrl);
-                createBuildCommitStatus(owner, repo, sha, status, github, buildResponse.logUrl);
+                createBuildCommitStatus(owner, repo, sha, status, context, github, buildResponse.logUrl);
             }
             const buildId = buildResponse.id;
             if (!buildId) {

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 -  Use nginx-ingress rather than default for GKE
+-  Get branch from commit status context
 
 ## [0.1.1][] - 2018-02-22
 

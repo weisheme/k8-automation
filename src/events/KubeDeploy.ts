@@ -116,7 +116,8 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
 export function eligibleDeployStatus(s: KubeDeploySub.Status): string {
     const prefix = "deploy/atomist/k8s/";
     if (s.context.indexOf(prefix) !== 0) {
-        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status does not start with ${prefix}`);
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status context '${s.context}' ` +
+            `does not start with '${prefix}'`);
         return undefined;
     }
     const env = s.context.replace(prefix, "");

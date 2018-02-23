@@ -43,7 +43,7 @@ import * as tmp from "tmp-promise";
 
 import { postBuildWebhook, postLinkImageWebhook } from "../atomistWebhook";
 import { preErrMsg, reduceResults } from "../error";
-import { atomistKubeBuildContext, createBuildCommitStatus } from "../github";
+import { createBuildCommitStatus, kubeBuildContextPrefix } from "../github";
 import { googleContainerBuild, imageTag } from "../googleContainerBuilder";
 import { GoogleContainerBuilderSub } from "../typings/types";
 
@@ -59,7 +59,8 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
 
         return Promise.all(ev.data.Status.map(s => {
 
-            if (!eligibleBuildStatus(s)) {
+            const branch = eligibleBuildStatus(s);
+            if (!branch) {
                 logger.info("push is not eligible for GoogleContainerBuilder");
                 return Promise.resolve(Success);
             }
@@ -94,7 +95,7 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
             );
 
             return jwtClient.authorize()
-                .then(tokens => cloneAndBuild(s, jwtClient, github), e => {
+                .then(tokens => cloneAndBuild(s, branch, jwtClient, github), e => {
                     logger.warn("failed to authorize with Google Cloud, will not perform Google Container builds: " +
                         e.message);
                     return Success;
@@ -109,41 +110,39 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
  * GoogleContainerBuilder.
  *
  * @param s status event
+ * @return branch if eligible, undefined if not
  */
-function eligibleBuildStatus(s: GoogleContainerBuilderSub.Status): boolean {
-    if (s.context !== atomistKubeBuildContext) {
-        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status context ${s.context} ` +
-            `is not ${atomistKubeBuildContext}`);
-        return false;
+function eligibleBuildStatus(s: GoogleContainerBuilderSub.Status): string {
+    if (s.context.indexOf(kubeBuildContextPrefix) !== 0) {
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status context '${s.context}' ` +
+            `does not start with '${kubeBuildContextPrefix}'`);
+        return undefined;
     }
     if (s.state !== "pending") {
         logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status state ${s.state} ` +
             `is not "pending"`);
-        return false;
+        return undefined;
     }
-    if (!s.commit.pushes.some(p => p.branch === s.commit.repo.defaultBranch)) {
-        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit is not on default ` +
-            `branch ${s.commit.repo.defaultBranch}`);
-        return false;
-    }
-    return true;
+    const branch = s.context.replace(kubeBuildContextPrefix, "");
+    return branch;
 }
 
 /**
  * Clone Git repo in temp directory and checkout commit, then call checkAndBuild.
  *
  * @param s status event
+ * @param branch build branch
  * @param jwtClient Google Cloud JWT client
  * @param github authenticated Github @octokit/rest client
  * @return handler result
  */
 export function cloneAndBuild(
     s: GoogleContainerBuilderSub.Status,
+    branch: string,
     jwtClient: JWT,
     github: Github,
 ): Promise<HandlerResult> {
 
-    const branch = s.commit.repo.defaultBranch;
     const repo = s.commit.repo.name;
     const owner = s.commit.repo.org.owner;
     const repoSlug = `${owner}/${repo}`;
@@ -263,6 +262,7 @@ export function gcBuild(
 ): Promise<HandlerResult> {
 
     const repoSlug = `${owner}/${repo}`;
+    const context = `${kubeBuildContextPrefix}${branch}`;
     const ciSrc = path.join(appRoot.path, "assets", "ci");
 
     return fs.copy(ciSrc, projectDir)
@@ -270,7 +270,7 @@ export function gcBuild(
         .then(() => {
             const status = "started";
             postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            createBuildCommitStatus(owner, repo, sha, status, github);
+            createBuildCommitStatus(owner, repo, sha, status, context, github);
             return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github);
         })
         .then(res => {
@@ -280,13 +280,13 @@ export function gcBuild(
                 postLinkImageWebhook(owner, repo, sha, image, teamId);
             }
             postBuildWebhook(owner, repo, branch, sha, res.status, teamId, res.logUrl);
-            createBuildCommitStatus(owner, repo, sha, res.status, github, res.logUrl);
+            createBuildCommitStatus(owner, repo, sha, res.status, context, github, res.logUrl);
             return Success;
         })
         .catch(e => {
             const status = "error";
             postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            createBuildCommitStatus(owner, repo, sha, status, github);
+            createBuildCommitStatus(owner, repo, sha, status, context, github);
             return Promise.reject(preErrMsg(e, `build of ${repoSlug} in ${projectDir} errored`));
         });
 }

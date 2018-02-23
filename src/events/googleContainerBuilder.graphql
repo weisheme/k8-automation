@@ -1,5 +1,5 @@
 subscription GoogleContainerBuilderSub {
-  Status(state: pending, context: "build/atomist/k8s") {
+  Status(state: pending) {
     context @required
     description
     state @required
@@ -8,7 +8,6 @@ subscription GoogleContainerBuilderSub {
       sha @required
       repo @required {
         name @required
-        defaultBranch @required
         org @required {
           owner @required
           provider(providerId: "zjlmxjzwhurspem") @required {
