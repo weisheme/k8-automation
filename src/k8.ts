@@ -89,7 +89,7 @@ export function upsertDeployment(
             logger.debug(`updating deployment ${ns}/${name} using ${image}`);
             return updateDeployment(ext, dep, image);
         }, e => {
-            logger.debug(`failed to find ${ns}/${name} deployment, creating using ${image}: ${e.message}`);
+            logger.debug(`failed to get ${ns}/${name} deployment, creating using ${image}: ${e.message}`);
             return createDeployment(core, ext, owner, repo, teamId, image, env);
         })
         .catch(e => {
@@ -357,8 +357,6 @@ function updateDeployment(ext: k8.ApiGroup, dep: Deployment, image: string): Pro
         .catch(e => Promise.reject(preErrMsg(e, `failed to patch deployment ${ns}/${name} with image ${image}`)));
 }
 
-const ingressNamespace = "default";
-
 /**
  * Create a deployment from a standard spec template.
  *
@@ -386,9 +384,6 @@ function createDeployment(
     const ns = space.metadata.name;
     const svc: Service = serviceTemplate(name, owner, repo, teamId);
     const dep: Deployment = deploymentTemplate(name, owner, repo, teamId, image);
-    const ingressName = "atm-gke";
-    const ingressSvcName = `${ns}${nameJoin}${name}`;
-    const ingressSvc: Service = ingressServiceTemplate(ingressSvcName);
     return core.namespaces(ns).get()
         .catch(e => {
             logger.debug(`failed to get namespace ${ns}, creating it: ${e.message}`);
@@ -397,23 +392,19 @@ function createDeployment(
         })
         .then(() => core.namespaces(ns).services.post({ body: svc })
             .catch(e => Promise.reject(preErrMsg(e, `failed to create service: ${stringify(svc)}`))))
-        .then((s: Service) => {
-            const endpoints: Endpoints = endpointsTemplate(ingressSvcName, s);
-            return core.namespaces(ingressNamespace).endpoints.post({ body: endpoints })
-                .catch(e => Promise.reject(preErrMsg(e, `failed to create endpoints: ${stringify(endpoints)}`)));
-        })
-        .then(() => core.namespaces(ingressNamespace).services.post({ body: ingressSvc })
-            .catch(e => Promise.reject(preErrMsg(e, `failed to create ingress service: ${stringify(ingressSvc)}`))))
-        .then(() => ext.namespaces(ingressNamespace).ingresses(ingressName).get()
-            .catch(e => Promise.reject(preErrMsg(e, `failed to get ingress ${ingressNamespace}/${ingressName}`))))
-        .then((ing: Ingress) => {
-            const patch: Partial<Ingress> = ingressPatch(ing, ingressSvcName, owner, repo, teamId, env);
-            return ext.namespaces(ingressNamespace).ingresses(ingressName).patch({ body: patch })
-                .catch(e => Promise.reject(preErrMsg(e, `failed to patch ingress ${ingressNamespace}/${ingressName}:` +
-                    stringify(ingressPatch))));
-        })
         .then(() => ext.namespaces(ns).deployments.post({ body: dep })
-            .catch(e => Promise.reject(preErrMsg(e, `failed to create deployment: ${stringify(dep)}`))));
+            .catch(e => Promise.reject(preErrMsg(e, `failed to create deployment: ${stringify(dep)}`))))
+        .then(() => ext.namespaces(ns).ingresses(ingressName).get())
+        .then((ing: Ingress) => {
+            const patch: Partial<Ingress> = ingressPatch(ing, name, owner, repo, teamId, env);
+            return ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
+                .catch(e => Promise.reject(preErrMsg(e, `failed to patch ingress: ${ing}+${stringify(patch)}`)));
+        }, e => {
+            logger.debug(`failed to get ingress in namespace ${ns}, creating: ${e.message}`);
+            const ing = ingressTemplate(ns, name, owner, repo, teamId, env);
+            return ext.namespaces(ns).ingresses.post({ body: ing })
+                .catch(er => Promise.reject(preErrMsg(e, `failed to create ingress: ${ing}`)));
+        });
 }
 
 const creator = "atomist/k8-automation";
@@ -592,40 +583,7 @@ function serviceTemplate(name: string, owner: string, repo: string, teamId: stri
     return s;
 }
 
-/**
- * Create service in the ingress namespace to to front the deployment
- * service in the team namespace.
- *
- * @param name service name
- * @return service resource for ingress to use
- */
-function ingressServiceTemplate(name: string): Service {
-    const s: Service = {
-        kind: "Service",
-        apiVersion: "v1",
-        metadata: {
-            name,
-            labels: {
-                service: name,
-                ingress: "global",
-                creator,
-            },
-        },
-        spec: {
-            ports: [
-                {
-                    name: "http",
-                    protocol: "TCP",
-                    port: 8080,
-                    targetPort: 8080,
-                },
-            ],
-            sessionAffinity: "None",
-            type: "NodePort",
-        },
-    };
-    return s;
-}
+const ingressName = "atm-gke-ri";
 
 /**
  * Create the ingress path for a deployment.
@@ -638,6 +596,83 @@ function ingressServiceTemplate(name: string): Service {
  */
 function ingressPath(owner: string, repo: string, teamId: string, env: string): string {
     return `/${teamId}/${env}/${owner}/${repo}/.*`;
+}
+
+/**
+ * Create a ingress HTTP path.
+ *
+ * @param service name of ingress service
+ * @param owner repository owner, i.e., organization or user
+ * @param repo name of repository
+ * @param teamId Atomist team ID
+ * @param env deployment environment, e.g., "production" or "testing"
+ * @return ingress patch
+ */
+function httpIngressPath(
+    service: string,
+    owner: string,
+    repo: string,
+    teamId: string,
+    env: string,
+): HTTPIngressPath {
+
+    const inPath = ingressPath(owner, repo, teamId, env);
+    const httpPath: HTTPIngressPath = {
+        path: inPath,
+        backend: {
+            serviceName: service,
+            servicePort: 8080,
+        },
+    };
+    return httpPath;
+}
+
+/**
+ * Create the ingress for a namespace.
+ *
+ * @param ns namespace to create ingress in
+ * @param teamId Atomist team ID
+ * @param env deployment environment, e.g., "production" or "testing"
+ * @return service resource for ingress to use
+ */
+function ingressTemplate(
+    ns: string,
+    service: string,
+    owner: string,
+    repo: string,
+    teamId: string,
+    env: string,
+): Ingress {
+
+    const httpPath: HTTPIngressPath = httpIngressPath(service, owner, repo, teamId, env);
+    const i: Ingress = {
+        kind: "Ingress",
+        apiVersion: "extensions/v1beta1",
+        metadata: {
+            name: ingressName,
+            namespace: ns,
+            annotations: {
+                "kubernetes.io/ingress.class": "nginx",
+                "ingress.kubernetes.io/rewrite-target": "/",
+            },
+            labels: {
+                ingress: "nginx",
+                teamId,
+                env,
+                creator,
+            },
+        },
+        spec: {
+            rules: [
+                {
+                    http: {
+                        paths: [httpPath],
+                    },
+                },
+            ],
+        },
+    };
+    return i;
 }
 
 /**
@@ -660,14 +695,7 @@ function ingressPatch(
     env: string,
 ): Partial<Ingress> {
 
-    const inPath = ingressPath(owner, repo, teamId, env);
-    const httpPath: HTTPIngressPath = {
-        path: inPath,
-        backend: {
-            serviceName: service,
-            servicePort: 8080,
-        },
-    };
+    const httpPath: HTTPIngressPath = httpIngressPath(service, owner, repo, teamId, env);
     const rules = ing.spec.rules;
     const paths = (rules && rules.length > 0) ? [...ing.spec.rules[0].http.paths, httpPath] : [httpPath];
     const patch: Partial<Ingress> = {
@@ -682,44 +710,4 @@ function ingressPatch(
         },
     };
     return patch;
-}
-
-/**
- * Create a manual endpoint for the service in the ingress namespace
- * that fronts the deployment service in the team namespace.
- *
- * @param name name of service service in the ingress namespace
- * @param svc service in the ingress namespace
- * @return valid Endpoints spec
- */
-function endpointsTemplate(name: string, svc: Service): Endpoints {
-    const e: Endpoints = {
-        kind: "Endpoints",
-        apiVersion: "v1",
-        metadata: {
-            name,
-            labels: {
-                service: name,
-                ingress: "global",
-                creator,
-            },
-        },
-        subsets: [
-            {
-                addresses: [
-                    {
-                        ip: svc.spec.clusterIP,
-                    },
-                ],
-                ports: [
-                    {
-                        name: svc.spec.ports[0].name,
-                        port: svc.spec.ports[0].port,
-                        protocol: svc.spec.ports[0].protocol,
-                    },
-                ],
-            },
-        ],
-    };
-    return e;
 }
