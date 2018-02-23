@@ -132,6 +132,11 @@ export function eligibleDeployStatus(s: KubeDeploySub.Status): string {
             `${s.commit.images.length} Docker images: ${stringify(s.commit.images)}`);
         return undefined;
     }
+    if (s.targetUrl) {
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit ${s.commit.sha} status already has ` +
+            `a targetUrl: ${s.targetUrl}`);
+        return undefined;
+    }
     const env = s.context.replace(kubeDeployContextPrefix, "");
     return env;
 }
