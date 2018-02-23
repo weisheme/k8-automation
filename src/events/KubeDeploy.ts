@@ -41,7 +41,6 @@ import * as path from "path";
 import * as tmp from "tmp-promise";
 
 import { preErrMsg, reduceResults } from "../error";
-import { createCommitStatus, GoogleContainerBuilderContext } from "../github";
 import { upsertDeployment } from "../k8";
 import { KubeDeploySub } from "../typings/types";
 
@@ -55,46 +54,47 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
 
     public handle(ev: EventFired<KubeDeploySub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
-        const github = new Github();
-        try {
-            github.authenticate({
-                type: "token",
-                token: this.githubToken,
-            });
-        } catch (e) {
-            logger.warn("failed to authenticate with GitHub using token, with not perform " +
-                `kube deploy: ${e.message}`);
-            return Promise.resolve(Success);
-        }
+        return Promise.all(ev.data.Status.map(s => {
 
-        let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
-        const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
-        try {
-            const kubeconfig = k8.config.loadKubeconfig(cfgPath);
-            k8Config = k8.config.fromKubeconfig(kubeconfig);
-        } catch (e) {
-            logger.debug(`failed to use ${cfgPath}: ${e.message}`);
-            try {
-                k8Config = k8.config.getInCluster();
-            } catch (er) {
-                logger.debug(`failed to use in-cluster-config: ${er.message}`);
-                logger.warn("failed to use either kubeconfig or in-cluster-config, will not deploy: " +
-                    `${e.message};${er.message}`);
-                return Promise.resolve(Success);
-            }
-        }
-
-        return Promise.all(ev.data.ImageLinked.map(il => {
-
-            if (!eligibleImageLink(il)) {
+            const owner = s.commit.repo.org.owner;
+            const repo = s.commit.repo.name;
+            const teamId = s.commit.repo.org.team.id;
+            // this will not work for monorepos that create multiple images from single commit
+            const image = s.commit.images[0].imageName;
+            const env = eligibleDeployStatus(s);
+            if (!env) {
                 logger.info("push is not eligible for GKE deploy");
                 return Promise.resolve(Success);
             }
-            const owner = il.commit.repo.org.owner;
-            const repo = il.commit.repo.name;
-            const teamId = il.commit.repo.org.team.id;
-            const image = il.image.imageName;
-            const env = "testing";
+
+            const github = new Github();
+            try {
+                github.authenticate({
+                    type: "token",
+                    token: this.githubToken,
+                });
+            } catch (e) {
+                logger.warn("failed to authenticate with GitHub using token, with not perform " +
+                    `kube deploy: ${e.message}`);
+                return Promise.resolve(Success);
+            }
+
+            let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
+            const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
+            try {
+                const kubeconfig = k8.config.loadKubeconfig(cfgPath);
+                k8Config = k8.config.fromKubeconfig(kubeconfig);
+            } catch (e) {
+                logger.debug(`failed to use ${cfgPath}: ${e.message}`);
+                try {
+                    k8Config = k8.config.getInCluster();
+                } catch (er) {
+                    logger.debug(`failed to use in-cluster-config: ${er.message}`);
+                    logger.warn("failed to use either kubeconfig or in-cluster-config, will not deploy: " +
+                        `${e.message};${er.message}`);
+                    return Promise.resolve(Success);
+                }
+            }
 
             return upsertDeployment(k8Config, owner, repo, teamId, image, env)
                 .then(() => Success, e => {
@@ -108,11 +108,17 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
 }
 
 /**
- * Determine if ImageLinked event should be deployed to GKE.
+ * Determine if status event should be deployed to GKE.
  *
- * @param il ImageLinked event
- * @return true if eligible, false otherwise
+ * @param s status event
+ * @return environment string if eligible, undefined otherwise
  */
-export function eligibleImageLink(il: KubeDeploySub.ImageLinked): boolean {
-    return il.commit.statuses.some(s => s.context === GoogleContainerBuilderContext && s.state === "success");
+export function eligibleDeployStatus(s: KubeDeploySub.Status): string {
+    const prefix = "deploy/atomist/k8s/";
+    if (s.context.indexOf(prefix) !== 0) {
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status does not start with ${prefix}`);
+        return undefined;
+    }
+    const env = s.context.replace(prefix, "");
+    return env;
 }

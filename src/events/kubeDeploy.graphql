@@ -1,24 +1,24 @@
 subscription KubeDeploySub {
-	ImageLinked {
-    image @required {
-      imageName @required
-    }
+  Status(state: pending) {
+    context @required
+    description
+    state @required
+    targetUrl
     commit @required {
       repo @required {
         name @required
         org @required {
           owner @required
           provider(providerId: "zjlmxjzwhurspem") @required {
-          	providerId
+            providerId @required
           }
           team @required {
-          	id @required
+            id @required
           }
         }
       }
-      statuses @required {
-        context @required
-        state @required
+      images @required {
+        imageName @required
       }
     }
   }

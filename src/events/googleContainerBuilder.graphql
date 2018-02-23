@@ -1,20 +1,26 @@
 subscription GoogleContainerBuilderSub {
-  Push {
-    branch @required
-    after @required {
+  Status(state: pending, context: "build/atomist/k8s") {
+    context @required
+    description
+    state @required
+    targetUrl
+    commit @required {
       sha @required
-    }
-    repo @required {
-      name @required
-      defaultBranch
-      org @required {
-        owner @required
-        provider(providerId: "zjlmxjzwhurspem") @required {
-          providerId
+      repo @required {
+        name @required
+        defaultBranch @required
+        org @required {
+          owner @required
+          provider(providerId: "zjlmxjzwhurspem") @required {
+            providerId @required
+          }
+          team @required {
+            id @required
+          }
         }
-        team @required {
-          id @required
-        }
+      }
+      pushes @required {
+        branch @required
       }
     }
   }

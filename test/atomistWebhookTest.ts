@@ -128,6 +128,7 @@ describe("atomistWebhook", () => {
         const branch = "StealersWheel";
         const sha = "abcdef0123456789876543210fedcba";
         const teamId = "TC1TY2C1TY";
+        const buildUrl = "https://some.com/logs";
         const urlBase = "https://webhook.atomist.com";
         const urlTail = `atomist/build/teams/${teamId}`;
         const url = `${urlBase}/${urlTail}`;
@@ -140,6 +141,7 @@ describe("atomistWebhook", () => {
             commit: sha,
             branch,
             provider: "GoogleContainerBuilder",
+            build_url: buildUrl,
         };
 
         it("should successfully post build start", done => {
@@ -151,7 +153,7 @@ describe("atomistWebhook", () => {
                 posted = true;
                 return [200];
             });
-            postBuildWebhook(owner, repo, branch, sha, status, teamId, noRetryOptions)
+            postBuildWebhook(owner, repo, branch, sha, status, teamId, buildUrl, noRetryOptions)
                 .then(res => {
                     assert(res);
                     assert(posted);
@@ -168,7 +170,7 @@ describe("atomistWebhook", () => {
                 posted = true;
                 return [200];
             });
-            postBuildWebhook(owner, repo, branch, sha, status, teamId, noRetryOptions)
+            postBuildWebhook(owner, repo, branch, sha, status, teamId, buildUrl, noRetryOptions)
                 .then(res => {
                     assert(res);
                     assert(posted);
@@ -185,7 +187,7 @@ describe("atomistWebhook", () => {
                 posted = true;
                 return [200];
             });
-            postBuildWebhook(owner, repo, branch, sha, status, teamId, noRetryOptions)
+            postBuildWebhook(owner, repo, branch, sha, status, teamId, buildUrl, noRetryOptions)
                 .then(res => {
                     assert(res);
                     assert(posted);
@@ -204,7 +206,7 @@ describe("atomistWebhook", () => {
                     posted = true;
                     return [200];
                 });
-            postBuildWebhook(owner, repo, branch, sha, status, teamId, noRetryOptions)
+            postBuildWebhook(owner, repo, branch, sha, status, teamId, buildUrl, noRetryOptions)
                 .then(res => {
                     assert(res);
                     assert(posted);
@@ -223,7 +225,7 @@ describe("atomistWebhook", () => {
                 posted = true;
                 return [200];
             });
-            postBuildWebhook(owner, repo, branch, sha, status, teamId, noRetryOptions)
+            postBuildWebhook(owner, repo, branch, sha, status, teamId, buildUrl, noRetryOptions)
                 .then(res => {
                     delete process.env.ATOMIST_WEBHOOK_BASEURL;
                     assert(res);

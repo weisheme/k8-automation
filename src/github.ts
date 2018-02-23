@@ -22,31 +22,32 @@ import { AtomistBuildStatus } from "./atomistWebhook";
 
 type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
 
-export const GoogleContainerBuilderContext = "continuous-integration/atomist/google-container-builder";
+export const atomistKubeBuildContext = "build/atomist/k8s";
 
 /**
- * Create GitHub commit status, mapping AtomistBuildStatus to GitHub
- * commit status state.  It will retry.
+ * Create GitHub commit status for Atomist Kubernetes build, mapping
+ * AtomistBuildStatus to GitHub commit status state.  It will retry.
  *
- * @param projectDir file system location of the project to build
  * @param owner repo owner
  * @param repo repo name
- * @param branch commit branch
  * @param sha commit SHA
- * @param teamId ID of Atomist team
+ * @param status Atomist build status
+ * @param github GitHub API client
+ * @param url optional commit status URL
  * @return true if successful, false if all attempts fail
  */
-export function createCommitStatus(
+export function createBuildCommitStatus(
     owner: string,
     repo: string,
     sha: string,
     status: AtomistBuildStatus,
     github: Github,
+    url?: string,
 ): Promise<boolean> {
 
     const repoSlug = `${owner}/${repo}`;
-    const description = "Atomist Continuous Integration for Google Container Builder";
-    const context = GoogleContainerBuilderContext;
+    const description = "Atomist continuous integration build for Google Container Builder";
+    const context = atomistKubeBuildContext;
     let state: GitHubCommitStatusState; // Github.RepoCreateStatusParams.state;
     switch (status) {
         case "started":
@@ -75,6 +76,9 @@ export function createCommitStatus(
         description,
         context,
     };
+    if (url) {
+        params.target_url = url;
+    }
     const retryOptions = {
         retries: 10,
         factor: 2,

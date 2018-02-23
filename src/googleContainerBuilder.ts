@@ -16,6 +16,7 @@
 
 import { logger } from "@atomist/automation-client";
 import * as Storage from "@google-cloud/storage";
+import * as Github from "@octokit/rest";
 import * as appRoot from "app-root-path";
 import * as fs from "fs-extra";
 import { JWT } from "google-auth-library";
@@ -27,8 +28,9 @@ import * as tar from "tar";
 import * as util from "util";
 import { v4 as uuidv4 } from "uuid";
 
-import { AtomistBuildStatus } from "./atomistWebhook";
+import { AtomistBuildStatus, postBuildWebhook } from "./atomistWebhook";
 import { preErrMsg } from "./error";
+import { createBuildCommitStatus } from "./github";
 
 type BuildStatus = "STATUS_UNKNOWN" | "QUEUED" | "WORKING" | "SUCCESS" | "FAILURE" |
     "INTERNAL_ERROR" | "TIMEOUT" | "CANCELLED";
@@ -177,6 +179,16 @@ export function imageTag(owner: string, repo: string, sha: string): string {
     return `gcr.io/${projectId}/${owner}/${repo}:${sha}`;
 }
 
+interface GetBuildResult {
+    status: BuildStatus;
+    logUrl: string;
+}
+
+export interface ContainerBuildResult {
+    status: AtomistBuildStatus;
+    logUrl: string;
+}
+
 /**
  * Tar, gzip, and upload current directory, start Google Container
  * Builder and poll until completion, returning the build status.
@@ -184,17 +196,22 @@ export function imageTag(owner: string, repo: string, sha: string): string {
  * @param dir path to repository on local file system
  * @param owner repository owner, i.e., user or organization
  * @param repo repository name
+ * @param branch commit branch
  * @param sha commit SHA
  * @param jwtClient Google Cloud JWT client
+ * @param github GitHub API client
  * @return build status
  */
 export function googleContainerBuild(
     dir: string,
     owner: string,
     repo: string,
+    branch: string,
     sha: string,
+    teamId: string,
     jwtClient: JWT,
-): Promise<AtomistBuildStatus> {
+    github: Github,
+): Promise<ContainerBuildResult> {
 
     const repoSlug = `${owner}/${repo}`;
     logger.debug("starting build of %s", repoSlug);
@@ -262,6 +279,11 @@ export function googleContainerBuild(
                 return Promise.reject(new Error(msg));
             }
             const buildResponse: BuildResource = createResponse.data.metadata.build;
+            if (buildResponse.logUrl) {
+                const status = "started";
+                postBuildWebhook(owner, repo, branch, sha, status, teamId, buildResponse.logUrl);
+                createBuildCommitStatus(owner, repo, sha, status, github, buildResponse.logUrl);
+            }
             const buildId = buildResponse.id;
             if (!buildId) {
                 const msg = `create build response missing build ID: ${stringify(buildResponse)}`;
@@ -304,15 +326,17 @@ export function googleContainerBuild(
                             return Promise.reject(new Error(`build ${br.id} not done: ${status}`));
                         }
                         logger.debug("%s build GCB status: %s", repoSlug, status);
-                        return status;
+                        const logUrl = br.logUrl;
+                        const buildResult: GetBuildResult = { status, logUrl };
+                        return buildResult;
                     })
                     .catch(retry);
             })
                 .catch((e: Error) => Promise.reject(preErrMsg(e, `failed to get final build status`)));
         })
-        .then((status: BuildStatus) => {
+        .then((getResponse: GetBuildResult) => {
             let atomistStatus: AtomistBuildStatus;
-            switch (status) {
+            switch (getResponse.status) {
                 case "STATUS_UNKNOWN":
                     return Promise.reject(new Error(`build status unknown`));
                 case "QUEUED":
@@ -334,10 +358,11 @@ export function googleContainerBuild(
                 default:
                     return Promise.reject(`unexpected Google Container Builder build status: ${status}`);
             }
+            const cbRes: ContainerBuildResult = { status: atomistStatus, logUrl: getResponse.logUrl };
             return Promise.all(cleanup.map(c => c()))
-                .then(() => atomistStatus, e => {
+                .then(() => cbRes, e => {
                     logger.warn("failed to clean up %s build: %s", repoSlug, e.message);
-                    return atomistStatus;
+                    return cbRes;
                 });
         })
         .catch(err => {

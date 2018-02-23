@@ -64,6 +64,7 @@ const DefaultRetryOptions = {
  * @param commit commit SHA
  * @param status "start", "success", or "fail"
  * @param teamId Atomist team ID
+ * @param url optional build URL
  * @param retryOptions change default retry options
  * @return true if successful, false on failure after retries
  */
@@ -74,6 +75,7 @@ export function postBuildWebhook(
     commit: string,
     status: AtomistBuildStatus,
     teamId: string,
+    url?: string,
     retryOptions = DefaultRetryOptions,
 ): Promise<boolean> {
 
@@ -85,6 +87,9 @@ export function postBuildWebhook(
         branch,
         provider: "GoogleContainerBuilder",
     };
+    if (url) {
+        payload.build_url = url;
+    }
     return postWebhook("build", payload, teamId, retryOptions);
 }
 

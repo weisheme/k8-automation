@@ -21,24 +21,30 @@ describe("GoogleContainerBuilder", () => {
             const gcb = new GoogleContainerBuilder();
             const e: EventFired<GoogleContainerBuilderSub.Subscription> = {
                 data: {
-                    Push: [
+                    Status: [
                         {
-                            after: {
+                            context: "does/not/match",
+                            description: "not us",
+                            state: "pending",
+                            commit: {
                                 sha: "b4e9412dcbaea4ffb5310c34b77637c5f3418b10",
-                            },
-                            branch: "other/branch",
-                            repo: {
-                                defaultBranch: "master",
-                                name: "gcb1",
-                                org: {
-                                    owner: "atomist-playground",
-                                    provider: {
-                                        providerId: "zjlmxjzwhurspem",
-                                    },
-                                    team: {
-                                        id: "T7GMF5USG",
+                                repo: {
+                                    defaultBranch: "master",
+                                    name: "gcb1",
+                                    org: {
+                                        owner: "atomist-playground",
+                                        provider: {
+                                            providerId: "zjlmxjzwhurspem",
+                                        },
+                                        team: {
+                                            id: "T7GMF5USG",
+                                        },
                                     },
                                 },
+                                pushes: [
+                                    { branch: "some/branch" },
+                                    { branch: "master" },
+                                ],
                             },
                         },
                     ],
