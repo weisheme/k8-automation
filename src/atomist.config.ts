@@ -16,29 +16,60 @@
 
 import { Configuration } from "@atomist/automation-client";
 import * as appRoot from "app-root-path";
+import * as config from "config";
+
+import { LogzioOptions } from "./util/logzio";
+import { secret } from "./util/secrets";
 
 // tslint:disable-next-line:no-var-requires
 const pj = require(`${appRoot}/package.json`);
 
-const token = process.env.GITHUB_TOKEN;
-const team = process.env.ATOMIST_TEAM;
-const teamIds = (team) ? [team] : [];
+const token = secret("github.token", process.env.GITHUB_TOKEN);
+const notLocal = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+
+const logzioOptions: LogzioOptions = {
+    applicationId: secret("applicationId"),
+    environmentId: secret("environmentId"),
+    token: secret("logzio.token", process.env.LOGZIO_TOKEN),
+};
 
 export const configuration: Configuration = {
     name: pj.name,
     version: pj.version,
-    keywords: ["atomist", "seed"],
-    teamIds,
+    keywords: pj.keywords,
+    policy: config.get("policy"),
+    teamIds: config.get("teamIds"),
     token,
     http: {
         enabled: true,
         auth: {
             basic: {
-                enabled: false,
+                enabled: config.get("http.auth.basic.enabled"),
+                username: secret("dashboard.user"),
+                password: secret("dashboard.password"),
             },
             bearer: {
-                enabled: false,
+                enabled: config.get("http.auth.bearer.enabled"),
+                adminOrg: "atomisthq",
             },
         },
     },
+    endpoints: {
+        api: config.get("endpoints.api"),
+        graphql: config.get("endpoints.graphql"),
+    },
+    applicationEvents: {
+        enabled: true,
+        teamId: "T29E48P34",
+    },
+    cluster: {
+        enabled: notLocal,
+    },
+    ws: {
+        enabled: true,
+        termination: {
+            graceful: true,
+        },
+    },
 };
+(configuration as any).groups = config.get("groups");

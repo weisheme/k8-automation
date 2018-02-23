@@ -39,3 +39,6 @@ declare module "tmp-promise" {
     }
     export function dir(options?: any): Promise<TmpDir>;
 }
+
+declare module "logzio-nodejs";
+declare module "serialize-error";
