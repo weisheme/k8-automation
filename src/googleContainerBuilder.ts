@@ -30,7 +30,6 @@ import { v4 as uuidv4 } from "uuid";
 
 import { AtomistBuildStatus, postBuildWebhook } from "./atomistWebhook";
 import { preErrMsg } from "./error";
-import { createBuildCommitStatus, kubeBuildContextPrefix } from "./github";
 
 type BuildStatus = "STATUS_UNKNOWN" | "QUEUED" | "WORKING" | "SUCCESS" | "FAILURE" |
     "INTERNAL_ERROR" | "TIMEOUT" | "CANCELLED";
@@ -199,7 +198,6 @@ export interface ContainerBuildResult {
  * @param branch commit branch
  * @param sha commit SHA
  * @param jwtClient Google Cloud JWT client
- * @param github GitHub API client
  * @return build status
  */
 export function googleContainerBuild(
@@ -210,7 +208,6 @@ export function googleContainerBuild(
     sha: string,
     teamId: string,
     jwtClient: JWT,
-    github: Github,
 ): Promise<ContainerBuildResult> {
 
     const repoSlug = `${owner}/${repo}`;
@@ -281,9 +278,7 @@ export function googleContainerBuild(
             const buildResponse: BuildResource = createResponse.data.metadata.build;
             if (buildResponse.logUrl) {
                 const status = "started";
-                const context = `${kubeBuildContextPrefix}${branch}`;
                 postBuildWebhook(owner, repo, branch, sha, status, teamId, buildResponse.logUrl);
-                createBuildCommitStatus(owner, repo, sha, status, context, github, buildResponse.logUrl);
             }
             const buildId = buildResponse.id;
             if (!buildId) {

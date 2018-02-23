@@ -123,6 +123,9 @@ function eligibleBuildStatus(s: GoogleContainerBuilderSub.Status): string {
             `is not "pending"`);
         return undefined;
     }
+    if (s.targetUrl) {
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status already has a URL`);
+    }
     const branch = s.context.replace(kubeBuildContextPrefix, "");
     return branch;
 }
@@ -270,8 +273,7 @@ export function gcBuild(
         .then(() => {
             const status = "started";
             postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            createBuildCommitStatus(owner, repo, sha, status, context, github);
-            return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github);
+            return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient);
         })
         .then(res => {
             logger.debug(`${repoSlug}:${sha} build status: ${status}`);

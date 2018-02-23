@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.0...HEAD
 
+### Fixed
+
+-   Do not fork bomb builds
+
 ## [0.2.0][] - 2018-02-23
 
 [0.2.0]: https://github.com/atomist/k8-automation/compare/0.1.1...0.2.0
@@ -17,12 +21,12 @@ Ingress release
 
 ### Changed
 
--  Use nginx-ingress rather than default for GKE
--  Get branch from commit status context
+-   Use nginx-ingress rather than default for GKE
+-   Get branch from commit status context
 
 ### Added
 
--  Update deploy commit status with state and endpoint URL
+-   Update deploy commit status with state and endpoint URL
 
 ## [0.1.1][] - 2018-02-22
 
