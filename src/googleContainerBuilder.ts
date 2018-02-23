@@ -321,7 +321,7 @@ export function googleContainerBuild(
                         if (status === "STATUS_UNKNOWN" || status === "QUEUED" || status === "WORKING") {
                             return Promise.reject(new Error(`build ${br.id} not done: ${status}`));
                         }
-                        logger.debug("%s build GCB status: %s", repoSlug, status);
+                        logger.debug(`${repoSlug} build GCB status: ${status}`);
                         const logUrl = br.logUrl;
                         const buildResult: GetBuildResult = { status, logUrl };
                         return buildResult;

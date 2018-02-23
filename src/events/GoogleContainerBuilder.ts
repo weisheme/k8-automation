@@ -276,7 +276,7 @@ export function gcBuild(
             return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient);
         })
         .then(res => {
-            logger.debug(`${repoSlug}:${sha} build status: ${status}`);
+            logger.debug(`${repoSlug}:${sha} build status: ${res.status}`);
             if (res.status === "passed") {
                 const image = imageTag(owner, repo, sha);
                 postLinkImageWebhook(owner, repo, sha, image, teamId);
