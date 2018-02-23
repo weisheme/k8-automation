@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 -  Use nginx-ingress rather than default for GKE
 -  Get branch from commit status context
 
+### Added
+
+-  Update deploy commit status with state and endpoint URL
+
 ## [0.1.1][] - 2018-02-22
 
 [0.1.1]: https://github.com/atomist/k8-automation/compare/0.1.0...0.1.1

@@ -19,63 +19,50 @@ import * as Github from "@octokit/rest";
 import promiseRetry = require("promise-retry");
 
 import { AtomistBuildStatus } from "./atomistWebhook";
+import { ingressPath } from "./k8";
 
-type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
+export type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
 
 export const kubeBuildContextPrefix = "build/atomist/k8s/";
+export const kubeDeployContextPrefix = "deploy/atomist/k8s/";
 
 /**
- * Create GitHub commit status for Atomist Kubernetes build, mapping
- * AtomistBuildStatus to GitHub commit status state.  It will retry.
+ * Create GitHub commit status.  It will retry.
  *
+ * @param github GitHub API client
  * @param owner repo owner
  * @param repo repo name
  * @param sha commit SHA
- * @param status Atomist build status
- * @param github GitHub API client
+ * @param state valid GitHub commit status
+ * @param context commit status context
+ * @param description free text description
  * @param url optional commit status URL
  * @return true if successful, false if all attempts fail
  */
-export function createBuildCommitStatus(
+export function createCommitStatus(
+    github: Github,
     owner: string,
     repo: string,
     sha: string,
-    status: AtomistBuildStatus,
-    context: string,
-    github: Github,
+    state: GitHubCommitStatusState,
+    context?: string,
+    description?: string,
     url?: string,
 ): Promise<boolean> {
 
     const repoSlug = `${owner}/${repo}`;
-    const description = "Atomist continuous integration build for Google Container Builder";
-    let state: GitHubCommitStatusState; // Github.RepoCreateStatusParams.state;
-    switch (status) {
-        case "started":
-            state = "pending";
-            break;
-        case "failed":
-            state = "failure";
-            break;
-        case "passed":
-            state = "success";
-            break;
-        case "error":
-        case "canceled":
-            state = "error";
-            break;
-        default:
-            logger.error(`unknown AtomistBuildStatus for ${repoSlug}:${sha}: ${status}`);
-            state = "error";
-            break;
-    }
     const params: Github.ReposCreateStatusParams = {
         owner,
         repo,
         sha,
         state,
-        description,
-        context,
     };
+    if (context) {
+        params.context = context;
+    }
+    if (description) {
+        params.description = description;
+    }
     if (url) {
         params.target_url = url;
     }
@@ -99,4 +86,82 @@ export function createBuildCommitStatus(
             logger.error(`failed to create commit state ${state} for ${repoSlug}:${sha}: ${e.message}`);
             return false;
         });
+}
+
+/**
+ * Create GitHub commit status for Atomist Kubernetes build, mapping
+ * AtomistBuildStatus to GitHub commit status state.  It will retry.
+ *
+ * @param owner repo owner
+ * @param repo repo name
+ * @param sha commit SHA
+ * @param status Atomist build status
+ * @param github GitHub API client
+ * @param url optional commit status URL
+ * @return true if successful, false if all attempts fail
+ */
+export function createBuildCommitStatus(
+    owner: string,
+    repo: string,
+    sha: string,
+    status: AtomistBuildStatus,
+    context: string,
+    github: Github,
+    description: string = "Atomist continuous integration build for Google Container Builder",
+    url?: string,
+): Promise<boolean> {
+
+    const repoSlug = `${owner}/${repo}`;
+    let state: GitHubCommitStatusState;
+    switch (status) {
+        case "started":
+            state = "pending";
+            break;
+        case "failed":
+            state = "failure";
+            break;
+        case "passed":
+            state = "success";
+            break;
+        case "error":
+        case "canceled":
+            state = "error";
+            break;
+        default:
+            logger.error(`unknown AtomistBuildStatus for ${repoSlug}:${sha}: ${status}`);
+            state = "error";
+            break;
+    }
+    return createCommitStatus(github, owner, repo, sha, state, context, description, url);
+}
+
+/**
+ * Create GitHub commit status for Atomist Kubernetes deploy with
+ * ingress path endpoint for the URL.  It will retry.
+ *
+ * @param github GitHub API client
+ * @param owner repository owner, i.e., organization or user
+ * @param repo repository name
+ * @param sha commit SHA
+ * @param teamId Atomist team ID
+ * @param env deployment environment
+ * @param state status state
+ * @return true if successful, false if all attempts fail
+ */
+export function createDeployCommitStatus(
+    github: Github,
+    owner: string,
+    repo: string,
+    sha: string,
+    teamId: string,
+    env: string,
+    description: string = "Atomist Kubernetes deployment service endpoint",
+    state: GitHubCommitStatusState = "success",
+): Promise<boolean> {
+
+    const context = kubeDeployContextPrefix + env;
+    const hostUrl = "http://sdm.atomist.com";
+    const uriPath = ingressPath(owner, repo, teamId, env);
+    const url = hostUrl + uriPath;
+    return createCommitStatus(github, owner, repo, sha, state, context, description, url);
 }

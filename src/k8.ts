@@ -92,10 +92,7 @@ export function upsertDeployment(
             logger.debug(`failed to get ${ns}/${name} deployment, creating using ${image}: ${e.message}`);
             return createDeployment(core, ext, owner, repo, teamId, image, env);
         })
-        .catch(e => {
-            return Promise.reject(preErrMsg(e, `upserting ${ns}/${name} using ${image} failed`));
-        });
-
+        .catch(e => Promise.reject(preErrMsg(e, `upserting ${ns}/${name} using ${image} failed`)));
 }
 
 interface Metadata {
@@ -594,7 +591,7 @@ const ingressName = "atm-gke-ri";
  * @param env deployment environment, e.g., "production" or "testing"
  * @return ingress path for deployment service
  */
-function ingressPath(owner: string, repo: string, teamId: string, env: string): string {
+export function ingressPath(owner: string, repo: string, teamId: string, env: string): string {
     return `/${teamId}/${env}/${owner}/${repo}/.*`;
 }
 

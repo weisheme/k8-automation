@@ -41,6 +41,7 @@ import * as path from "path";
 import * as tmp from "tmp-promise";
 
 import { preErrMsg, reduceResults } from "../error";
+import { createDeployCommitStatus, kubeDeployContextPrefix } from "../github";
 import { upsertDeployment } from "../k8";
 import { KubeDeploySub } from "../typings/types";
 
@@ -56,16 +57,17 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
 
         return Promise.all(ev.data.Status.map(s => {
 
-            const owner = s.commit.repo.org.owner;
-            const repo = s.commit.repo.name;
-            const teamId = s.commit.repo.org.team.id;
-            // this will not work for monorepos that create multiple images from single commit
-            const image = s.commit.images[0].imageName;
             const env = eligibleDeployStatus(s);
             if (!env) {
                 logger.info("push is not eligible for GKE deploy");
                 return Promise.resolve(Success);
             }
+            const owner = s.commit.repo.org.owner;
+            const repo = s.commit.repo.name;
+            const teamId = s.commit.repo.org.team.id;
+            const sha = s.commit.sha;
+            const description = (s.description) ? s.description : undefined;
+            const image = s.commit.images[0].imageName;
 
             const github = new Github();
             try {
@@ -97,10 +99,16 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
             }
 
             return upsertDeployment(k8Config, owner, repo, teamId, image, env)
-                .then(() => Success, e => {
-                    const message = `failed to deploy image ${image}: ${e.message}`;
-                    logger.error(message);
-                    return { code: Failure.code, message };
+                .catch(e => {
+                    createDeployCommitStatus(github, owner, repo, sha, teamId, env, description, "failure");
+                    return Promise.reject(preErrMsg(e, `failed to deploy image ${image}`));
+                })
+                .then(() => createDeployCommitStatus(github, owner, repo, sha, teamId, env, description)
+                    .catch(e => Promise.reject(preErrMsg(e, `deployed image ${image} but failed to update status`))))
+                .then(() => Success)
+                .catch(e => {
+                    logger.error(e.message);
+                    return { code: Failure.code, message: e.message };
                 });
         }))
             .then(results => reduceResults(results));
@@ -114,12 +122,16 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
  * @return environment string if eligible, undefined otherwise
  */
 export function eligibleDeployStatus(s: KubeDeploySub.Status): string {
-    const prefix = "deploy/atomist/k8s/";
-    if (s.context.indexOf(prefix) !== 0) {
+    if (s.context.indexOf(kubeDeployContextPrefix) !== 0) {
         logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status context '${s.context}' ` +
-            `does not start with '${prefix}'`);
+            `does not start with '${kubeDeployContextPrefix}'`);
         return undefined;
     }
-    const env = s.context.replace(prefix, "");
+    if (s.commit.images.length !== 1) {
+        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit ${s.commit.sha} has ` +
+            `${s.commit.images.length} Docker images: ${stringify(s.commit.images)}`);
+        return undefined;
+    }
+    const env = s.context.replace(kubeDeployContextPrefix, "");
     return env;
 }
