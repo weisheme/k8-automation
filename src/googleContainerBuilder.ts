@@ -277,6 +277,7 @@ export function googleContainerBuild(
             }
             const buildResponse: BuildResource = createResponse.data.metadata.build;
             if (buildResponse.logUrl) {
+                logger.debug(`logsBucket:${buildResponse.logsBucket}`);
                 const status = "started";
                 postBuildWebhook(owner, repo, branch, sha, status, teamId, buildResponse.logUrl);
             }

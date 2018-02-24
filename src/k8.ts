@@ -22,6 +22,8 @@ import * as path from "path";
 
 import { preErrMsg } from "./error";
 
+const joinString = "-0-";
+
 /**
  * Kubernetes has rules about what can be in a name, specifically they
  * must conform to this regular expression
@@ -32,10 +34,8 @@ import { preErrMsg } from "./error";
  * @return cleaned name
  */
 function cleanName(name: string): string {
-    return "r" + name.toLocaleLowerCase().replace(/[^a-z0-9\-]/g, "x") + "9";
+    return "r" + name.toLocaleLowerCase().replace(/[^a-z0-9\-]+/g, joinString) + "9";
 }
-
-const nameJoin = "-0-";
 
 /**
  * Generated kubernetes namespace from repo owner and Atomist team ID.
@@ -46,7 +46,7 @@ const nameJoin = "-0-";
  * @return kubernetes namespace to create resource in
  */
 function getNamespace(owner: string, teamId: string, env: string): string {
-    return cleanName(`${teamId}${nameJoin}${env}`);
+    return cleanName(`${teamId}${joinString}${env}`);
 }
 
 /**
@@ -56,7 +56,7 @@ function getNamespace(owner: string, teamId: string, env: string): string {
  * @param repo repository name, used as name of deployment/service
  */
 function resourceName(owner: string, repo: string): string {
-    return cleanName(`${owner}${nameJoin}${repo}`);
+    return cleanName(`${owner}${joinString}${repo}`);
 }
 
 /**
@@ -404,7 +404,7 @@ function createDeployment(
         });
 }
 
-const creator = "atomist/k8-automation";
+const creator = `atomist.k8-automation`;
 
 /**
  * Create namespace resource.
@@ -581,6 +581,7 @@ function serviceTemplate(name: string, owner: string, repo: string, teamId: stri
 }
 
 const ingressName = "atm-gke-ri";
+const hostDns = "sdm.atomist.com";
 
 /**
  * Create the ingress path for a deployment.
@@ -592,7 +593,11 @@ const ingressName = "atm-gke-ri";
  * @return ingress path for deployment service
  */
 export function ingressPath(owner: string, repo: string, teamId: string, env: string): string {
-    return `/${teamId}/${env}/${owner}/${repo}/.*`;
+    return `/${teamId}/${env}/${owner}/${repo}`;
+}
+
+export function ingressBaseUrl(owner: string, repo: string, teamId: string, env: string): string {
+    return `http://${hostDns}${ingressPath(owner, repo, teamId, env)}/`;
 }
 
 /**
@@ -650,7 +655,7 @@ function ingressTemplate(
             namespace: ns,
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
-                "ingress.kubernetes.io/rewrite-target": "/",
+                "nginx.ingress.kubernetes.io/rewrite-target": "/",
             },
             labels: {
                 ingress: "nginx",
@@ -662,6 +667,7 @@ function ingressTemplate(
         spec: {
             rules: [
                 {
+                    host: hostDns,
                     http: {
                         paths: [httpPath],
                     },

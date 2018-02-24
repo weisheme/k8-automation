@@ -19,7 +19,7 @@ import * as Github from "@octokit/rest";
 import promiseRetry = require("promise-retry");
 
 import { AtomistBuildStatus } from "./atomistWebhook";
-import { ingressPath } from "./k8";
+import { ingressBaseUrl } from "./k8";
 
 export type GitHubCommitStatusState = "pending" | "success" | "error" | "failure";
 
@@ -160,8 +160,6 @@ export function createDeployCommitStatus(
 ): Promise<boolean> {
 
     const context = kubeDeployContextPrefix + env;
-    const hostUrl = "http://sdm.atomist.com";
-    const uriPath = ingressPath(owner, repo, teamId, env);
-    const url = hostUrl + uriPath;
+    const url = ingressBaseUrl(owner, repo, teamId, env);
     return createCommitStatus(github, owner, repo, sha, state, context, description, url);
 }
