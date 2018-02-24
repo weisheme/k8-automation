@@ -282,13 +282,13 @@ export function gcBuild(
                 postLinkImageWebhook(owner, repo, sha, image, teamId);
             }
             postBuildWebhook(owner, repo, branch, sha, res.status, teamId, res.logUrl);
-            createBuildCommitStatus(owner, repo, sha, res.status, context, github, res.logUrl);
+            createBuildCommitStatus(github, owner, repo, sha, res.status, context, res.logUrl);
             return Success;
         })
         .catch(e => {
             const status = "error";
             postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            createBuildCommitStatus(owner, repo, sha, status, context, github);
+            createBuildCommitStatus(github, owner, repo, sha, status, context);
             return Promise.reject(preErrMsg(e, `build of ${repoSlug} in ${projectDir} errored`));
         });
 }

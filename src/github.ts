@@ -92,23 +92,25 @@ export function createCommitStatus(
  * Create GitHub commit status for Atomist Kubernetes build, mapping
  * AtomistBuildStatus to GitHub commit status state.  It will retry.
  *
+ * @param github GitHub API client
  * @param owner repo owner
  * @param repo repo name
  * @param sha commit SHA
  * @param status Atomist build status
- * @param github GitHub API client
+ * @param context commit status context, usually build/atomist/k8s/BRANCH
  * @param url optional commit status URL
+ * @param description optional commit status free text description
  * @return true if successful, false if all attempts fail
  */
 export function createBuildCommitStatus(
+    github: Github,
     owner: string,
     repo: string,
     sha: string,
     status: AtomistBuildStatus,
     context: string,
-    github: Github,
-    description: string = "Atomist continuous integration build for Google Container Builder",
     url?: string,
+    description: string = "Atomist continuous integration build for Google Container Builder",
 ): Promise<boolean> {
 
     const repoSlug = `${owner}/${repo}`;
