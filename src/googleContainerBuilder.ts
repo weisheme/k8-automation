@@ -160,6 +160,13 @@ interface BuildPayload {
     auth?: JWT;
 }
 
+/**
+ * File filter for tar creation.
+ *
+ * @param p file path
+ * @param stat file stat
+ * @return true if file should be included, false otherwise
+ */
 function nodeFilter(p: string, stat: tar.FileStat): boolean {
     return !(/\.tgz$/.test(p) || p.includes("node_modules"));
 }
@@ -180,12 +187,35 @@ export function imageTag(owner: string, repo: string, sha: string): string {
 
 interface GetBuildResult {
     status: BuildStatus;
-    logUrl: string;
+    logUrl?: string;
 }
 
 export interface ContainerBuildResult {
     status: AtomistBuildStatus;
-    logUrl: string;
+    logUrl?: string;
+}
+
+const buildLogBucket = "reference-implementation-1-build-logs-1";
+
+/**
+ * Create a signed URL for the build logs.
+ *
+ * @param storage Google Cloud Storage client
+ * @param buildId Google Container Builder build ID
+ * @param logBucket the build log bucket
+ * @return signed URL for logs
+ */
+function signedLogUrl(storage: Storage.Storage, buildId: string, logBucket: string): Promise<string> {
+    const bucket = logBucket.replace(/^gs:\/\//, "");
+    const logPath = `log-${buildId}.txt`;
+    const expiration = Date.now() + 24 * 60 * 60 * 1000;
+    const options = {
+        action: "read",
+        expires: expiration,
+    };
+    return storage.bucket(bucket).file(logPath).getSignedUrl(options)
+        .catch(e => Promise.reject(preErrMsg(e, `failed to generated signed URL for log file`)))
+        .then(results => results[0]);
 }
 
 /**
@@ -228,6 +258,7 @@ export function googleContainerBuild(
                 args: ["build", "-t", image, "."],
             }],
             images: [image],
+            logsBucket: buildLogBucket,
             tags: ["customer", "reference-implementation"],
         },
         auth: jwtClient,
@@ -276,15 +307,15 @@ export function googleContainerBuild(
                 return Promise.reject(new Error(msg));
             }
             const buildResponse: BuildResource = createResponse.data.metadata.build;
-            if (buildResponse.logUrl) {
-                logger.debug(`logsBucket:${buildResponse.logsBucket}`);
-                const status = "started";
-                postBuildWebhook(owner, repo, branch, sha, status, teamId, buildResponse.logUrl);
-            }
             const buildId = buildResponse.id;
             if (!buildId) {
                 const msg = `create build response missing build ID: ${stringify(buildResponse)}`;
                 return Promise.reject(new Error(msg));
+            }
+            if (buildResponse.logsBucket) {
+                const status = "started";
+                signedLogUrl(storage, buildId, buildResponse.logsBucket)
+                    .then(logUrl => postBuildWebhook(owner, repo, branch, sha, status, teamId, logUrl));
             }
             let pGetBuild: any;
             try {
@@ -322,10 +353,13 @@ export function googleContainerBuild(
                         if (status === "STATUS_UNKNOWN" || status === "QUEUED" || status === "WORKING") {
                             return Promise.reject(new Error(`build ${br.id} not done: ${status}`));
                         }
-                        logger.debug(`${repoSlug} build GCB status: ${status}`);
-                        const logUrl = br.logUrl;
-                        const buildResult: GetBuildResult = { status, logUrl };
-                        return buildResult;
+                        if (!br.id || !br.logsBucket) {
+                            logger.warn(`${repoSlug} get build response missing ID and/or logsBucket: ` +
+                                stringify(br));
+                            return { status };
+                        }
+                        return signedLogUrl(storage, br.id, br.logsBucket)
+                            .then(logUrl => ({ status, logUrl }));
                     })
                     .catch(retry);
             })
