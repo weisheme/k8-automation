@@ -20,6 +20,7 @@ import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
 import * as path from "path";
 
+import { webhookBaseUrl } from "./atomistWebhook";
 import { preErrMsg } from "./error";
 
 const joinString = "-0-";
@@ -438,6 +439,21 @@ function namespaceTemplate(owner: string, teamId: string, env: string): Namespac
  */
 function deploymentTemplate(name: string, owner: string, repo: string, teamId: string, image: string): Deployment {
     const baseImage = image.split(":")[0];
+    const k8ventAnnot = stringify({
+        webhooks: [
+            `${webhookBaseUrl}/atomist/kube/teams/${teamId}`,
+        ],
+    });
+    const repoImageAnnot = stringify([
+        {
+            name,
+            repo: {
+                owner,
+                name: repo,
+            },
+            image: baseImage,
+        },
+    ]);
     const d: Deployment = {
         apiVersion: "extensions/v1beta1",
         kind: "Deployment",
@@ -448,10 +464,6 @@ function deploymentTemplate(name: string, owner: string, repo: string, teamId: s
                 owner,
                 teamId,
                 creator,
-            },
-            annotations: {
-                "atomist.com/k8vent": `{"webhooks":["https://webhook.atomist.com/atomist/kube/teams/${teamId}"]}`,
-                "atomist.com/repo-image": `[{"repo":{"owner":"${owner}","name":"${repo}"},"image":"${baseImage}"}]`,
             },
         },
         spec: {
@@ -472,6 +484,10 @@ function deploymentTemplate(name: string, owner: string, repo: string, teamId: s
                         owner,
                         teamId,
                         creator,
+                    },
+                    annotations: {
+                        "atomist.com/k8vent": k8ventAnnot,
+                        "atomist.com/repo-image": repoImageAnnot,
                     },
                 },
                 spec: {

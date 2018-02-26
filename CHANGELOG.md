@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.4...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.5...HEAD
+
+## [0.2.5][] - 2018-02-26
+
+[0.2.5]: https://github.com/atomist/k8-automation/compare/0.2.4...0.2.5
+
+Annotation release
+
+### Changed
+
+-   Moved deployment annotations to pod
+-   Return signed URL to build logs rather than console URL
 
 ## [0.2.4][] - 2018-02-24
 

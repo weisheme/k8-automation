@@ -145,6 +145,11 @@ export function postLinkImageWebhook(
 }
 
 /**
+ * Scheme and hostname (authority) of the Atomist webhook URL.
+ */
+export const webhookBaseUrl = process.env.ATOMIST_WEBHOOK_BASEURL || "https://webhook.atomist.com";
+
+/**
  * Post payload to the Atomist webhook URL.  It will retry
  * several times.
  *
@@ -161,8 +166,7 @@ export function postWebhook(
     retryOptions = DefaultRetryOptions,
 ): Promise<boolean> {
 
-    const baseUrl = process.env.ATOMIST_WEBHOOK_BASEURL || "https://webhook.atomist.com";
-    const url = `${baseUrl}/atomist/${webhook}/teams/${teamId}`;
+    const url = `${webhookBaseUrl}/atomist/${webhook}/teams/${teamId}`;
     return promiseRetry(retryOptions, (retry, retryCount) => {
         logger.debug("posting '%s' to '%s' attempt %d", stringify(payload), url, retryCount);
         return axios.post(url, payload)
