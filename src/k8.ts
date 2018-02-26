@@ -441,7 +441,7 @@ function deploymentTemplate(name: string, owner: string, repo: string, teamId: s
     const baseImage = image.split(":")[0];
     const k8ventAnnot = stringify({
         webhooks: [
-            `${webhookBaseUrl}/atomist/kube/teams/${teamId}`,
+            `${webhookBaseUrl()}/atomist/kube/teams/${teamId}`,
         ],
     });
     const repoImageAnnot = stringify([
