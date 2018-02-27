@@ -1,6 +1,6 @@
 {
   "name": "@atomist/k8-automation",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Automations for deploying, updating, reporting resources in Kubernetes",
   "author": "Atomist",
   "license": "Apache-2.0",

@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.5...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.6...HEAD
+
+## [0.2.6][] - 2018-02-27
+
+[0.2.6]: https://github.com/atomist/k8-automation/compare/0.2.5...0.2.6
+
+Host release
+
+### Fixed
+
+-   No longer lose host from ingress rules
 
 ## [0.2.5][] - 2018-02-26
 

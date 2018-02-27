@@ -721,6 +721,7 @@ function ingressPatch(
         spec: {
             rules: [
                 {
+                    host: hostDns,
                     http: {
                         paths,
                     },
