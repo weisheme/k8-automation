@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.2.6...HEAD
 
+### Changed
+
+-   Minor update to repo-image deployment pod template annotation
+-   Add environment to pod k8vent annotation
+
 ## [0.2.6][] - 2018-02-27
 
 [0.2.6]: https://github.com/atomist/k8-automation/compare/0.2.5...0.2.6

@@ -381,7 +381,7 @@ function createDeployment(
     const space: Namespace = namespaceTemplate(owner, teamId, env);
     const ns = space.metadata.name;
     const svc: Service = serviceTemplate(name, owner, repo, teamId);
-    const dep: Deployment = deploymentTemplate(name, owner, repo, teamId, image);
+    const dep: Deployment = deploymentTemplate(name, owner, repo, teamId, image, env);
     return core.namespaces(ns).get()
         .catch(e => {
             logger.debug(`failed to get namespace ${ns}, creating it: ${e.message}`);
@@ -435,18 +435,28 @@ function namespaceTemplate(owner: string, teamId: string, env: string): Namespac
  * @param repo name of repository
  * @param teamId Atomist team ID
  * @param image full Docker image tag, i.e., [REGISTRY/]OWNER/NAME:VERSION
+ * @param env deployment environment, e.g., "production" or "testing"
  * @return deployment resource
  */
-function deploymentTemplate(name: string, owner: string, repo: string, teamId: string, image: string): Deployment {
+function deploymentTemplate(
+    name: string,
+    owner: string,
+    repo: string,
+    teamId: string,
+    image: string,
+    env: string,
+): Deployment {
+
     const baseImage = image.split(":")[0];
     const k8ventAnnot = stringify({
+        environment: env,
         webhooks: [
             `${webhookBaseUrl()}/atomist/kube/teams/${teamId}`,
         ],
     });
     const repoImageAnnot = stringify([
         {
-            name,
+            container: name,
             repo: {
                 owner,
                 name: repo,
