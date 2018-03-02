@@ -19,7 +19,9 @@ import * as assert from "power-assert";
 
 import {
     deploymentTemplate,
+    Ingress,
     ingressPatch,
+    ingressRemove,
     ingressTemplate,
     serviceTemplate,
 } from "../src/k8";
@@ -213,6 +215,183 @@ describe("k8", () => {
                     ],
                 },
             };
+            assert.deepStrictEqual(ip, e);
+        });
+
+    });
+
+    describe("ingressRemove", () => {
+
+        it("should create an ingress patch", () => {
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        creator: "atomist.k8-automation",
+                        env: "testing",
+                        ingress: "nginx",
+                        teamId: "T7GMF5USG",
+                    },
+                    name: "atm-gke-ri",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "sdm.atomist.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-losgatos19",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-thunder-cats9",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            const req = {
+                owner: "atomist-playground",
+                repo: "losgatos1",
+                teamId: "T7GMF5USG",
+                env: "testing",
+            };
+            const ip = ingressRemove(i, req);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            host: "sdm.atomist.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-thunder-cats9",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
+        });
+
+        it("should not do anything if there is no match", () => {
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        creator: "atomist.k8-automation",
+                        env: "testing",
+                        ingress: "nginx",
+                        teamId: "T7GMF5USG",
+                    },
+                    name: "atm-gke-ri",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "sdm.atomist.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-losgatos19",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-thunder-cats9",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            const req = {
+                owner: "atomist-playground",
+                repo: "le-tigre",
+                teamId: "T7GMF5USG",
+                env: "testing",
+            };
+            const ip = ingressRemove(i, req);
+            assert.deepStrictEqual(ip, { spec: i.spec });
+        });
+
+        it("should remove the only path", () => {
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        creator: "atomist.k8-automation",
+                        env: "testing",
+                        ingress: "nginx",
+                        teamId: "T7GMF5USG",
+                    },
+                    name: "atm-gke-ri",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "sdm.atomist.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "ratomist-playground-0-losgatos19",
+                                            servicePort: 8080,
+                                        },
+                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            const req = {
+                owner: "atomist-playground",
+                repo: "losgatos1",
+                teamId: "T7GMF5USG",
+                env: "testing",
+            };
+            const ip = ingressRemove(i, req);
+            const e: Partial<Ingress> = { spec: { rules: [{ host: "sdm.atomist.com", http: { paths: [] } }] } };
             assert.deepStrictEqual(ip, e);
         });
 

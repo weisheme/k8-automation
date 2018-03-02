@@ -40,7 +40,7 @@ export function reduceResults(results: HandlerResult[]): HandlerResult {
     return results.reduce((acc, cur) => {
         return {
             code: acc.code + cur.code,
-            message: (cur.message) ? `${acc.message}; ${cur.message}` : acc.message,
+            message: (cur.message) ? ((acc.message) ? `${acc.message}; ${cur.message}` : cur.message) : acc.message,
         };
     }, Success);
 }

@@ -12,8 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 -   Set ATOMIST_ENVIRONMENT variable in deployment pod container [#7][7]
+-   Undeploy handler [#6][6]
 
 [7]: https://github.com/atomist/k8-automation/issues/7
+[6]: https://github.com/atomist/k8-automation/issues/6
 
 ## [0.3.0][] - 2018-03-01
 

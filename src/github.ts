@@ -25,6 +25,7 @@ export type GitHubCommitStatusState = "pending" | "success" | "error" | "failure
 
 export const kubeBuildContextPrefix = "build/atomist/k8s/";
 export const kubeDeployContextPrefix = "deploy/atomist/k8s/";
+export const kubeUndeployContextPrefix = "undeploy/atomist/k8s/";
 
 /**
  * Create GitHub commit status.  It will retry.
@@ -164,4 +165,32 @@ export function createDeployCommitStatus(
     const context = kubeDeployContextPrefix + env;
     const url = ingressBaseUrl({ owner, repo, teamId, env });
     return createCommitStatus(github, owner, repo, sha, state, context, description, url);
+}
+
+/**
+ * Create GitHub commit status for Atomist Kubernetes undeploy.  It
+ * will retry.
+ *
+ * @param github GitHub API client
+ * @param owner repository owner, i.e., organization or user
+ * @param repo repository name
+ * @param sha commit SHA
+ * @param teamId Atomist team ID
+ * @param env deployment environment
+ * @param state status state
+ * @return true if successful, false if all attempts fail
+ */
+export function createUndeployCommitStatus(
+    github: Github,
+    owner: string,
+    repo: string,
+    sha: string,
+    teamId: string,
+    env: string,
+    description: string = "Atomist Kubernetes undeployment service endpoint",
+    state: GitHubCommitStatusState = "success",
+): Promise<boolean> {
+
+    const context = kubeUndeployContextPrefix + env;
+    return createCommitStatus(github, owner, repo, sha, state, context, description);
 }

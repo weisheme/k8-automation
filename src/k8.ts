@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import { logger } from "@atomist/automation-client";
+import { HandlerResult, logger } from "@atomist/automation-client";
 import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
 import * as path from "path";
 
 import { webhookBaseUrl } from "./atomistWebhook";
-import { preErrMsg } from "./error";
+import { preErrMsg, reduceResults } from "./error";
 
 /**
  * Information needed to create, update, or delete a deployment
@@ -136,6 +136,58 @@ export function upsertDeployment(
             return createDeployment(req);
         })
         .catch(e => Promise.reject(preErrMsg(e, `upserting ${ns}/${name} using ${image} failed`)));
+}
+
+/**
+ * Delete a deployment, its service, and ingress rules from a
+ * kubernetes cluster.
+ *
+ * @param req delete deployment request object
+ */
+export function deleteDeployment(
+    config: k8.ClusterConfiguration | k8.ClientConfiguration,
+    owner: string,
+    repo: string,
+    teamId: string,
+    env: string = "production",
+): Promise<void> {
+    const core = new k8.Core(config);
+    const ext = new k8.Extensions(config);
+    const req = { core, ext, owner, repo, teamId, env };
+    const name = resourceName(req);
+    const ns = getNamespace(req);
+    const depStr = stringify({ owner, repo, teamId, env });
+    const updateIngress: Promise<HandlerResult> = ext.namespaces(ns).ingresses(ingressName).get()
+        .then((ing: Ingress) => {
+            const patch: Partial<Ingress> = ingressRemove(ing, req);
+            if (patch.spec.rules[0].http.paths.length < 1) {
+                return ext.namespaces(ns).ingresses(ingressName).delete({})
+                    .catch(e => Promise.reject(preErrMsg(e, `failed to delete ingress`)));
+            }
+            return ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
+                .catch(e => Promise.reject(preErrMsg(e, `failed to remove path from ingress`)));
+        }, e => logger.debug(`no ingress found for '${depStr}': ${e.message}`))
+        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
+    const rmService: Promise<HandlerResult> = core.namespaces(ns).services(name).get()
+        .then((svc: Service) => {
+            return core.namespaces(ns).services(name).delete({})
+                .catch(e => Promise.reject(preErrMsg(e, `failed to delete service`)));
+        }, e => logger.debug(`no service found for '${depStr}': ${e.message}`))
+        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
+    const rmDeployment: Promise<HandlerResult> = ext.namespaces(ns).deployments(name).get()
+        .then((dep: Deployment) => {
+            return ext.namespaces(ns).deployments(name).delete({ body: { propagationPolicy: "Background" } })
+                .catch(e => Promise.reject(preErrMsg(e, `failed to delete deployment`)));
+        }, e => logger.debug(`no deployment found for '${depStr}': ${e.message}`))
+        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
+    return Promise.all([updateIngress, rmService, rmDeployment])
+        .then(results => {
+            const acc = reduceResults(results);
+            if (acc.code > 0) {
+                return Promise.reject(new Error(`failed to delete some resources of '${depStr}': ${acc.message}`));
+            }
+            return;
+        });
 }
 
 export interface Metadata {
@@ -511,18 +563,6 @@ function createDeployment(req: DeploymentRequest): Promise<any> {
         });
 }
 
-/**
- * Delete a deployment, its service, and ingress rules from a
- * kubernetes cluster.
- *
- * @param req delete deployment request object
- */
-function deleteDeployment(req: DeploymentRequest): Promise<void> {
-    const name = resourceName(req);
-    const ns = getNamespace(req);
-    return Promise.resolve();
-}
-
 const creator = `atomist.k8-automation`;
 
 /**
@@ -811,6 +851,36 @@ export function ingressPatch(ing: Ingress, req: IngressRequest): Partial<Ingress
     const httpPath: HTTPIngressPath = httpIngressPath(req);
     const rules = ing.spec.rules;
     const paths = (rules && rules.length > 0) ? [...ing.spec.rules[0].http.paths, httpPath] : [httpPath];
+    const patch: Partial<Ingress> = {
+        spec: {
+            rules: [
+                {
+                    host: hostDns,
+                    http: {
+                        paths,
+                    },
+                },
+            ],
+        },
+    };
+    return patch;
+}
+
+/**
+ * Create a patch to remove a path from the ingress rules.
+ *
+ * @param ing ingress resource to create patch for
+ * @param req ingress request
+ * @return ingress patch that removes the path
+ */
+export function ingressRemove(ing: Ingress, req: IngressRequest): Partial<Ingress> {
+    const rules = ing.spec.rules;
+    if (!rules || rules.length < 1) {
+        logger.debug(`requested to remove path from ingress with no rules: ${stringify(ing)}`);
+        return undefined;
+    }
+    const iPath = ingressPath(req);
+    const paths = rules[0].http.paths.filter(p => p.path !== iPath);
     const patch: Partial<Ingress> = {
         spec: {
             rules: [

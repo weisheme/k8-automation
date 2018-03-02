@@ -37,33 +37,33 @@ import * as k8 from "kubernetes-client";
 import * as path from "path";
 
 import { preErrMsg, reduceResults } from "../error";
-import { createDeployCommitStatus, kubeDeployContextPrefix } from "../github";
-import { upsertDeployment } from "../k8";
-import { KubeDeploySub } from "../typings/types";
+import { createUndeployCommitStatus, kubeUndeployContextPrefix } from "../github";
+import { deleteDeployment } from "../k8";
+import { KubeUndeploySub } from "../typings/types";
 
-@EventHandler("deploy image to Kubernetes cluster",
-    GraphQL.subscriptionFromFile("kubeDeploy", __dirname))
+@EventHandler("remove image from Kubernetes cluster",
+    GraphQL.subscriptionFromFile("kubeUndeploy", __dirname))
 @Tags("deploy", "kubernetes")
-export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
+export class KubeUndeploy implements HandleEvent<KubeUndeploySub.Subscription> {
 
     @Secret(Secrets.OrgToken)
     private githubToken: string;
 
-    public handle(ev: EventFired<KubeDeploySub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
+    public handle(ev: EventFired<KubeUndeploySub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
         return Promise.all(ev.data.Status.map(s => {
 
-            const env = eligibleDeployStatus(s);
+            const env = eligibleUndeployStatus(s);
             if (!env) {
-                logger.info("push is not eligible for GKE deploy");
+                logger.info("push is not eligible for GKE undeploy");
                 return Promise.resolve(Success);
             }
+            const sha = s.commit.sha;
             const owner = s.commit.repo.org.owner;
             const repo = s.commit.repo.name;
             const teamId = s.commit.repo.org.team.id;
-            const sha = s.commit.sha;
             const description = (s.description) ? s.description : undefined;
-            const image = s.commit.images[0].imageName;
+            const depName = `${teamId}/${env}/${owner}/${repo}`;
 
             const github = new Github();
             try {
@@ -94,13 +94,13 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
                 }
             }
 
-            return upsertDeployment(k8Config, owner, repo, teamId, image, env)
+            return deleteDeployment(k8Config, owner, repo, teamId, env)
                 .catch(e => {
-                    createDeployCommitStatus(github, owner, repo, sha, teamId, env, description, "failure");
-                    return Promise.reject(preErrMsg(e, `failed to deploy image ${image}`));
+                    createUndeployCommitStatus(github, owner, repo, sha, teamId, env, description, "failure");
+                    return Promise.reject(preErrMsg(e, `failed to delete ${depName}`));
                 })
-                .then(() => createDeployCommitStatus(github, owner, repo, sha, teamId, env, description)
-                    .catch(e => Promise.reject(preErrMsg(e, `deployed image ${image} but failed to update status`))))
+                .then(() => createUndeployCommitStatus(github, owner, repo, sha, teamId, env, description)
+                    .catch(e => Promise.reject(preErrMsg(e, `deleted ${depName} but failed to update status`))))
                 .then(() => Success)
                 .catch(e => {
                     logger.error(e.message);
@@ -117,22 +117,12 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
  * @param s status event
  * @return environment string if eligible, undefined otherwise
  */
-export function eligibleDeployStatus(s: KubeDeploySub.Status): string {
-    if (s.context.indexOf(kubeDeployContextPrefix) !== 0) {
+export function eligibleUndeployStatus(s: KubeUndeploySub.Status): string {
+    if (s.context.indexOf(kubeUndeployContextPrefix) !== 0) {
         logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit status context '${s.context}' ` +
-            `does not start with '${kubeDeployContextPrefix}'`);
+            `does not start with '${kubeUndeployContextPrefix}'`);
         return undefined;
     }
-    if (s.commit.images.length !== 1) {
-        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit ${s.commit.sha} has ` +
-            `${s.commit.images.length} Docker images: ${stringify(s.commit.images)}`);
-        return undefined;
-    }
-    if (s.targetUrl) {
-        logger.debug(`${s.commit.repo.org.owner}/${s.commit.repo.name} commit ${s.commit.sha} status already has ` +
-            `a targetUrl: ${s.targetUrl}`);
-        return undefined;
-    }
-    const env = s.context.replace(kubeDeployContextPrefix, "");
+    const env = s.context.replace(kubeUndeployContextPrefix, "");
     return env;
 }
