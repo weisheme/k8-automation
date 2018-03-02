@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.4.0...HEAD
+
+## [0.4.0][] - 2018-03-02
+
+[0.4.0]: https://github.com/atomist/k8-automation/compare/0.3.0...0.4.0
+
+Un release
 
 ### Added
 
 -   Set ATOMIST_ENVIRONMENT variable in deployment pod container [#7][7]
--   Undeploy handler [#6][6]
+-   Un-deploy handler [#6][6]
 
 [7]: https://github.com/atomist/k8-automation/issues/7
 [6]: https://github.com/atomist/k8-automation/issues/6
