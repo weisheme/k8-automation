@@ -496,7 +496,7 @@ export interface IngressRule {
 
 export interface IngressSpec {
     backend?: IngressBackend;
-    tls?: IngressTLS;
+    tls?: IngressTLS[];
     rules?: IngressRule[];
 }
 
@@ -780,7 +780,7 @@ export function ingressPath(req: IngressRequest): string {
  * @return ingress path for deployment service
  */
 export function ingressBaseUrl(req: IngressRequest): string {
-    return `http://${hostDns}${ingressPath(req)}/`;
+    return `https://${hostDns}${ingressPath(req)}/`;
 }
 
 /**
@@ -818,6 +818,11 @@ export function ingressTemplate(req: IngressRequest): Ingress {
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                "nginx.ingress.kubernetes.io/limit-connections": "5",
+                "nginx.ingress.kubernetes.io/limit-rps": "5",
+                "nginx.ingress.kubernetes.io/limit-rpm": "50",
+                "nginx.ingress.kubernetes.io/limit-rate": "50k",
+                "nginx.ingress.kubernetes.io/limit-rate-after": "100k",
             },
             labels: {
                 ingress: "nginx",
@@ -829,7 +834,6 @@ export function ingressTemplate(req: IngressRequest): Ingress {
         spec: {
             rules: [
                 {
-                    host: hostDns,
                     http: {
                         paths: [httpPath],
                     },
@@ -855,7 +859,6 @@ export function ingressPatch(ing: Ingress, req: IngressRequest): Partial<Ingress
         spec: {
             rules: [
                 {
-                    host: hostDns,
                     http: {
                         paths,
                     },
@@ -885,7 +888,6 @@ export function ingressRemove(ing: Ingress, req: IngressRequest): Partial<Ingres
         spec: {
             rules: [
                 {
-                    host: hostDns,
                     http: {
                         paths,
                     },

@@ -138,6 +138,11 @@ describe("k8", () => {
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                        "nginx.ingress.kubernetes.io/limit-connections": "5",
+                        "nginx.ingress.kubernetes.io/limit-rps": "5",
+                        "nginx.ingress.kubernetes.io/limit-rpm": "50",
+                        "nginx.ingress.kubernetes.io/limit-rate": "50k",
+                        "nginx.ingress.kubernetes.io/limit-rate-after": "100k",
                     },
                     labels: {
                         creator: "atomist.k8-automation",
@@ -150,7 +155,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -192,7 +196,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -242,7 +245,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -276,7 +278,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -315,7 +316,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -368,7 +368,6 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -391,7 +390,7 @@ describe("k8", () => {
                 env: "testing",
             };
             const ip = ingressRemove(i, req);
-            const e: Partial<Ingress> = { spec: { rules: [{ host: "sdm.atomist.io", http: { paths: [] } }] } };
+            const e: Partial<Ingress> = { spec: { rules: [{ http: { paths: [] } }] } };
             assert.deepStrictEqual(ip, e);
         });
 

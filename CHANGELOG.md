@@ -22,6 +22,7 @@ I/O release
 ### Added
 
 -   Kubernetes resource specifications and deployment instructions
+-   Rate limiting annotations to ingress controllers
 
 ## [0.4.0][] - 2018-03-02
 
