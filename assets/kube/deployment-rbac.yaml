@@ -1,0 +1,80 @@
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: k8-automation
+  namespace: k8-automation
+  labels:
+    app: k8-automation
+    owner: atomist
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: k8-automation
+      owner: atomist
+  template:
+    metadata:
+      labels:
+        app: k8-automation
+        owner: atomist
+        version: "0"
+      annotations:
+        atomist.com/repo-image: '[{"container":"k8-automation","repo":{"owner":"atomist","name":"k8-automation"},"image":"atomist/k8-automation"}]'
+    spec:
+      serviceAccountName: k8-automation-serviceaccount
+      containers:
+      - name: k8-automation
+        image: atomist/k8-automation:0.4.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ATOMIST_TEAM
+          valueFrom:
+            secretKeyRef:
+              name: automation-config
+              key: teamId
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: automation-config
+              key: githubToken
+        ports:
+        - name: http
+          containerPort: 2866
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: "/health"
+            port: 2866
+            scheme: HTTP
+          initialDelaySeconds: 20
+          timeoutSeconds: 3
+          periodSeconds: 20
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: "/health"
+            port: 2866
+            scheme: HTTP
+          initialDelaySeconds: 20
+          timeoutSeconds: 3
+          periodSeconds: 20
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 0.5
+            memory: 160Mi
+          requests:
+            cpu: 0.1
+            memory: 128Mi
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1

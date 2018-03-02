@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.4.0...HEAD
 
+### Added
+
+-   Kubernetes resource specifications and deployment instructions
+
 ## [0.4.0][] - 2018-03-02
 
 [0.4.0]: https://github.com/atomist/k8-automation/compare/0.3.0...0.4.0
