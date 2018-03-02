@@ -23,6 +23,27 @@ import * as path from "path";
 import { webhookBaseUrl } from "./atomistWebhook";
 import { preErrMsg } from "./error";
 
+/**
+ * Information needed to create, update, or delete a deployment
+ * in/from a kubernetes cluster.
+ */
+export interface DeploymentRequest {
+    /** Kubernetes Core client */
+    core: k8.ApiGroup;
+    /** Kubernetes Extension client */
+    ext: k8.ApiGroup;
+    /** owner of repository */
+    owner: string;
+    /** name of repository, used as deployment/service name */
+    repo: string;
+    /** Atomist team ID */
+    teamId: string;
+    /** image tag for deployment pod template container */
+    image: string;
+    /** deployment environment, e.g., "production" or "testing" */
+    env: string;
+}
+
 const joinString = "-0-";
 
 /**
@@ -38,26 +59,46 @@ function cleanName(name: string): string {
     return "r" + name.toLocaleLowerCase().replace(/[^a-z0-9\-]+/g, joinString) + "9";
 }
 
+export type NamespaceRequest = Pick<DeploymentRequest, "teamId" | "env">;
+
 /**
- * Generated kubernetes namespace from repo owner and Atomist team ID.
+ * Generated kubernetes namespace for a deployment.
  *
- * @param owner repository owner, i.e., organization or user
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req namespace request object
  * @return kubernetes namespace to create resource in
  */
-function getNamespace(owner: string, teamId: string, env: string): string {
-    return cleanName(`${teamId}${joinString}${env}`);
+function getNamespace(req: NamespaceRequest): string {
+    return cleanName(`${req.teamId}${joinString}${req.env}`);
+}
+
+export type NameRequest = Pick<DeploymentRequest, "owner" | "repo">;
+
+/**
+ * Generate resource name for a deployment.
+ *
+ * @param req deployment request object
+ * @return resource name
+ */
+function resourceName(req: NameRequest): string {
+    return cleanName(`${req.owner}${joinString}${req.repo}`);
 }
 
 /**
- * Generate resource name from repo name and owner.
- *
- * @param owner repository owner, i.e., organization or user
- * @param repo repository name, used as name of deployment/service
+ * Information needed to upsert a deployment in a kubernetes cluster.
  */
-function resourceName(owner: string, repo: string): string {
-    return cleanName(`${owner}${joinString}${repo}`);
+export interface UpsertDeploymentRequest {
+    /** Kubernetes cluster or client configuration */
+    config: k8.ClusterConfiguration | k8.ClientConfiguration;
+    /** owner of repository */
+    owner: string;
+    /** name of repository, used as deployment/service name */
+    repo: string;
+    /** Atomist team ID */
+    teamId: string;
+    /** image tag for deployment pod template container */
+    image: string;
+    /** deployment environment, e.g., "production" or "testing" */
+    env: string;
 }
 
 /**
@@ -82,8 +123,9 @@ export function upsertDeployment(
 
     const core = new k8.Core(config);
     const ext = new k8.Extensions(config);
-    const ns = getNamespace(owner, teamId, env);
-    const name = resourceName(owner, repo);
+    const req: DeploymentRequest = { core, ext, owner, repo, teamId, image, env };
+    const ns = getNamespace(req);
+    const name = resourceName(req);
 
     return ext.namespaces(ns).deployments(name).get()
         .then(dep => {
@@ -91,12 +133,12 @@ export function upsertDeployment(
             return updateDeployment(ext, dep, image);
         }, e => {
             logger.debug(`failed to get ${ns}/${name} deployment, creating using ${image}: ${e.message}`);
-            return createDeployment(core, ext, owner, repo, teamId, image, env);
+            return createDeployment(req);
         })
         .catch(e => Promise.reject(preErrMsg(e, `upserting ${ns}/${name} using ${image} failed`)));
 }
 
-interface Metadata {
+export interface Metadata {
     name: string;
     generateName?: string;
     namespace?: string;
@@ -116,31 +158,31 @@ interface Metadata {
     clusterName?: string;
 }
 
-interface Namespace {
+export interface Namespace {
     apiVersion: "v1";
     kind: "Namespace";
     metadata: Metadata;
 }
 
-interface MatchSelector {
+export interface MatchSelector {
     matchLabels?: {
         [key: string]: string;
     };
     matchExpressions?: string[];
 }
 
-interface Selector {
+export interface Selector {
     [key: string]: string;
 }
 
-interface HttpHeader {
+export interface HttpHeader {
     name: string;
     value: string;
 }
 
-type UriScheme = "HTTP" | "HTTPS";
+export type UriScheme = "HTTP" | "HTTPS";
 
-interface Probe {
+export interface Probe {
     httpGet?: {
         path?: string;
         port?: string;
@@ -155,9 +197,9 @@ interface Probe {
     failureThreshold?: number;
 }
 
-type Protocol = "TCP" | "UDP";
+export type Protocol = "TCP" | "UDP";
 
-interface ContainerPort {
+export interface ContainerPort {
     name?: string;
     hostPort?: number;
     containerPort: number;
@@ -165,34 +207,112 @@ interface ContainerPort {
     hostIP?: string;
 }
 
-interface Resource {
+export interface ObjectFieldSelector {
+    apiVersion?: string;
+    fieldPath: string;
+}
+
+export interface ResourceFieldSelector {
+    containerName?: string;
+    resource: string;
+    divisor?: string;
+}
+
+export interface ConfigMapKeySelector {
+    name?: string;
+    key: string;
+    optional: boolean;
+}
+
+export interface SecretKeySelector {
+    name?: string;
+    key: string;
+    optional?: boolean;
+}
+
+export interface EnvVarSource {
+    fieldRef?: ObjectFieldSelector;
+    resourceFieldRef?: ResourceFieldSelector;
+    configMapKeyRef?: ConfigMapKeySelector;
+    secretKeyRef?: SecretKeySelector;
+}
+
+export interface EnvVar {
+    name: string;
+    value?: string;
+    valueFrom?: EnvVarSource;
+}
+
+export interface Resource {
     cpu?: string | number;
     memory?: string | number;
 }
 
-interface Container {
+export interface ResourceRequirements {
+    limits?: Resource;
+    requests?: Resource;
+}
+
+export interface VolumeMount {
+    name: string;
+    readOnly?: boolean;
+    mountPath: string;
+    subPath?: string;
+}
+
+export interface VolumeDevice {
+    name: string;
+    devicePath: string;
+}
+
+export type PullPolicy = "Always" | "IfNotPresent" | "Never";
+
+export type TerminationMessagePolicy = "File" | "FallbackToLogsOnError";
+
+export interface Container {
     name: string;
     image?: string;
-    imagePullPolicy?: "Always" | "IfNotPresent" | "Never";
-    resources?: {
-        limits?: Resource;
-        requests?: Resource;
-    };
-    readinessProbe?: Probe;
-    livenessProbe?: Probe;
+    command?: string[];
+    args?: string[];
+    workingDir?: string;
     ports?: ContainerPort[];
+    env?: EnvVar[];
+    resources?: ResourceRequirements;
+    volumeMounts?: VolumeMount[];
+    volumeDevices?: VolumeDevice[];
+    livenessProbe?: Probe;
+    readinessProbe?: Probe;
+    terminationMessagePath?: string;
+    terminationMessagePolicy?: TerminationMessagePolicy;
+    imagePullPolicy?: PullPolicy;
+    // securityContext?: SecurityContext;
+    stdin?: boolean;
+    stdinOnce?: boolean;
+    tty?: boolean;
 }
 
-interface PodSpec {
+export type RestartPolicy = "Always" | "OnFailure" | "Never";
+
+export type DNSPolicy = "ClusterFirstWithHostNet" | "ClusterFirst" | "Default" | "None";
+
+export interface PodSpec {
+    initContainers?: Container[];
     containers: Container[];
+    restartPolicy?: RestartPolicy;
+    terminationGracePeriodSeconds?: number;
+    activeDeadlineSeconds?: number;
+    dnsPolicy?: DNSPolicy;
+    nodeSelector?: { [key: string]: string };
+    serviceAccountName?: string;
+    automountServiceAccountToken?: boolean;
 }
 
-interface PodTemplate {
+export interface PodTemplate {
     metadata?: Metadata;
     spec?: PodSpec;
 }
 
-interface Deployment {
+export interface Deployment {
     apiVersion: "extensions/v1beta1";
     kind: "Deployment";
     metadata?: Metadata;
@@ -211,7 +331,7 @@ interface Deployment {
     };
 }
 
-interface ServicePort {
+export interface ServicePort {
     name?: string;
     protocol?: Protocol;
     port: number;
@@ -219,13 +339,13 @@ interface ServicePort {
     nodePort?: number;
 }
 
-interface SessionAffinityConfig {
+export interface SessionAffinityConfig {
     clientIP?: {
         timeoutSeconds?: number;
     };
 }
 
-interface ServiceSpec {
+export interface ServiceSpec {
     ports: ServicePort[];
     selector?: Selector;
     clusterIP?: string;
@@ -241,20 +361,20 @@ interface ServiceSpec {
     sessionAffinityConfig?: SessionAffinityConfig;
 }
 
-interface LoadBalancerIngress {
+export interface LoadBalancerIngress {
     ip?: string;
     hostname?: string;
 }
 
-interface LoadBalancerStatus {
+export interface LoadBalancerStatus {
     ingress?: LoadBalancerIngress[];
 }
 
-interface ServiceStatus {
+export interface ServiceStatus {
     loadBalancer?: LoadBalancerStatus;
 }
 
-interface Service {
+export interface Service {
     kind: "Service";
     apiVersion: "v1";
     metadata?: Metadata;
@@ -262,7 +382,7 @@ interface Service {
     status?: ServiceStatus;
 }
 
-interface ObjectReference {
+export interface ObjectReference {
     kind?: string;
     namespace?: string;
     name?: string;
@@ -272,67 +392,67 @@ interface ObjectReference {
     fieldPath?: string;
 }
 
-interface EndpointAddress {
+export interface EndpointAddress {
     ip: string;
     hostname?: string;
     nodeName?: string;
     targetRef?: ObjectReference;
 }
 
-interface EndpointPort {
+export interface EndpointPort {
     name?: string;
     port: number;
     protocol?: Protocol;
 }
 
-interface EndpointSubset {
+export interface EndpointSubset {
     addresses?: EndpointAddress[];
     notReadyAddresses?: EndpointAddress[];
     ports?: EndpointPort[];
 }
 
-interface Endpoints {
+export interface Endpoints {
     kind: "Endpoints";
     apiVersion: "v1";
     metadata?: Metadata;
     subsets: EndpointSubset[];
 }
 
-interface IngressBackend {
+export interface IngressBackend {
     serviceName: string;
     servicePort: string | number;
 }
 
-interface IngressTLS {
+export interface IngressTLS {
     hosts?: string[];
     secretName?: string;
 }
 
-interface HTTPIngressPath {
+export interface HTTPIngressPath {
     path?: string;
     backend: IngressBackend;
 }
 
-interface HTTPIngressRuleValue {
+export interface HTTPIngressRuleValue {
     paths: HTTPIngressPath[];
 }
 
-interface IngressRule {
+export interface IngressRule {
     host?: string;
     http?: HTTPIngressRuleValue;
 }
 
-interface IngressSpec {
+export interface IngressSpec {
     backend?: IngressBackend;
     tls?: IngressTLS;
     rules?: IngressRule[];
 }
 
-interface IngressStatus {
+export interface IngressStatus {
     loadBalancer?: LoadBalancerStatus;
 }
 
-interface Ingress {
+export interface Ingress {
     kind: "Ingress";
     apiVersion: "extensions/v1beta1";
     metadata?: Metadata;
@@ -343,9 +463,10 @@ interface Ingress {
 /**
  * Update the image of the first container in a deployment pod template.
  *
+ * @param ext Kubernetes extension API client
  * @param dep current deployment spec
  * @param image new image tagname
- * @return new deployment spec
+ * @return updated deployment spec
  */
 function updateDeployment(ext: k8.ApiGroup, dep: Deployment, image: string): Promise<any> {
     const name = dep.metadata.name;
@@ -358,51 +479,48 @@ function updateDeployment(ext: k8.ApiGroup, dep: Deployment, image: string): Pro
 /**
  * Create a deployment from a standard spec template.
  *
- * @param core k8 Core client
- * @param ext k8 Extension client
- * @param owner owner of repository
- * @param repo name of repository, used as deployment/service name
- * @param teamId Atomist team ID
- * @param image image tag for deployment pod template container
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req deployment request
  * @return created deployment spec
  */
-function createDeployment(
-    core: k8.ApiGroup,
-    ext: k8.ApiGroup,
-    owner: string,
-    repo: string,
-    teamId: string,
-    image: string,
-    env: string,
-): Promise<any> {
-
-    const name = resourceName(owner, repo);
-    const space: Namespace = namespaceTemplate(owner, teamId, env);
+function createDeployment(req: DeploymentRequest): Promise<any> {
+    const name = resourceName(req);
+    const space: Namespace = namespaceTemplate(req);
     const ns = space.metadata.name;
-    const svc: Service = serviceTemplate(name, owner, repo, teamId);
-    const dep: Deployment = deploymentTemplate(name, owner, repo, teamId, image, env);
-    return core.namespaces(ns).get()
+    const svc: Service = serviceTemplate(req);
+    const dep: Deployment = deploymentTemplate(req);
+    return req.core.namespaces(ns).get()
         .catch(e => {
             logger.debug(`failed to get namespace ${ns}, creating it: ${e.message}`);
-            return core.namespaces.post({ body: space })
+            return req.core.namespaces.post({ body: space })
                 .catch(er => Promise.reject(preErrMsg(er, `failed to create namespace ${stringify(space)}`)));
         })
-        .then(() => core.namespaces(ns).services.post({ body: svc })
+        .then(() => req.core.namespaces(ns).services.post({ body: svc })
             .catch(e => Promise.reject(preErrMsg(e, `failed to create service: ${stringify(svc)}`))))
-        .then(() => ext.namespaces(ns).deployments.post({ body: dep })
+        .then(() => req.ext.namespaces(ns).deployments.post({ body: dep })
             .catch(e => Promise.reject(preErrMsg(e, `failed to create deployment: ${stringify(dep)}`))))
-        .then(() => ext.namespaces(ns).ingresses(ingressName).get())
+        .then(() => req.ext.namespaces(ns).ingresses(ingressName).get())
         .then((ing: Ingress) => {
-            const patch: Partial<Ingress> = ingressPatch(ing, name, owner, repo, teamId, env);
-            return ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
+            const patch: Partial<Ingress> = ingressPatch(ing, req);
+            return req.ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
                 .catch(e => Promise.reject(preErrMsg(e, `failed to patch ingress: ${ing}+${stringify(patch)}`)));
         }, e => {
             logger.debug(`failed to get ingress in namespace ${ns}, creating: ${e.message}`);
-            const ing = ingressTemplate(ns, name, owner, repo, teamId, env);
-            return ext.namespaces(ns).ingresses.post({ body: ing })
+            const ing = ingressTemplate(req);
+            return req.ext.namespaces(ns).ingresses.post({ body: ing })
                 .catch(er => Promise.reject(preErrMsg(e, `failed to create ingress: ${ing}`)));
         });
+}
+
+/**
+ * Delete a deployment, its service, and ingress rules from a
+ * kubernetes cluster.
+ *
+ * @param req delete deployment request object
+ */
+function deleteDeployment(req: DeploymentRequest): Promise<void> {
+    const name = resourceName(req);
+    const ns = getNamespace(req);
+    return Promise.resolve();
 }
 
 const creator = `atomist.k8-automation`;
@@ -410,13 +528,11 @@ const creator = `atomist.k8-automation`;
 /**
  * Create namespace resource.
  *
- * @param owner repository owner, i.e., organization or user
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req namespace request
  * @return kubernetes namespace resource
  */
-function namespaceTemplate(owner: string, teamId: string, env: string): Namespace {
-    const name = getNamespace(owner, teamId, env);
+export function namespaceTemplate(req: NamespaceRequest): Namespace {
+    const name = getNamespace(req);
     const ns: Namespace = {
         apiVersion: "v1",
         kind: "Namespace",
@@ -427,39 +543,27 @@ function namespaceTemplate(owner: string, teamId: string, env: string): Namespac
     return ns;
 }
 
+export type DeploymentTemplateRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "image" | "env">;
+
 /**
  * Create deployment for a repo and image.
  *
- * @param name deployment name
- * @param owner repository owner, i.e., organization or user
- * @param repo name of repository
- * @param teamId Atomist team ID
- * @param image full Docker image tag, i.e., [REGISTRY/]OWNER/NAME:VERSION
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req deployment template request
  * @return deployment resource
  */
-function deploymentTemplate(
-    name: string,
-    owner: string,
-    repo: string,
-    teamId: string,
-    image: string,
-    env: string,
-): Deployment {
-
-    const baseImage = image.split(":")[0];
+export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
+    const name = resourceName(req);
+    const baseImage = req.image.split(":")[0];
     const k8ventAnnot = stringify({
-        environment: env,
-        webhooks: [
-            `${webhookBaseUrl()}/atomist/kube/teams/${teamId}`,
-        ],
+        environment: req.env,
+        webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
     const repoImageAnnot = stringify([
         {
             container: name,
             repo: {
-                owner,
-                name: repo,
+                owner: req.owner,
+                name: req.repo,
             },
             image: baseImage,
         },
@@ -470,9 +574,9 @@ function deploymentTemplate(
         metadata: {
             name,
             labels: {
-                app: repo,
-                owner,
-                teamId,
+                app: req.repo,
+                owner: req.owner,
+                teamId: req.teamId,
                 creator,
             },
         },
@@ -481,18 +585,18 @@ function deploymentTemplate(
             revisionHistoryLimit: 3,
             selector: {
                 matchLabels: {
-                    app: repo,
-                    owner,
-                    teamId,
+                    app: req.repo,
+                    owner: req.owner,
+                    teamId: req.teamId,
                 },
             },
             template: {
                 metadata: {
                     name,
                     labels: {
-                        app: repo,
-                        owner,
-                        teamId,
+                        app: req.repo,
+                        owner: req.owner,
+                        teamId: req.teamId,
                         creator,
                     },
                     annotations: {
@@ -504,8 +608,14 @@ function deploymentTemplate(
                     containers: [
                         {
                             name,
-                            image,
+                            image: req.image,
                             imagePullPolicy: "IfNotPresent",
+                            env: [
+                                {
+                                    name: "ATOMIST_ENVIRONMENT",
+                                    value: req.env,
+                                },
+                            ],
                             resources: {
                                 limits: {
                                     cpu: "300m",
@@ -522,11 +632,11 @@ function deploymentTemplate(
                                     port: "http",
                                     scheme: "HTTP",
                                 },
-                                initialDelaySeconds: 60,
+                                initialDelaySeconds: 30,
                                 timeoutSeconds: 3,
                                 periodSeconds: 10,
                                 successThreshold: 1,
-                                failureThreshold: 3,
+                                failureThreshold: 6,
                             },
                             livenessProbe: {
                                 httpGet: {
@@ -534,11 +644,11 @@ function deploymentTemplate(
                                     port: "http",
                                     scheme: "HTTP",
                                 },
-                                initialDelaySeconds: 60,
+                                initialDelaySeconds: 30,
                                 timeoutSeconds: 3,
                                 periodSeconds: 10,
                                 successThreshold: 1,
-                                failureThreshold: 3,
+                                failureThreshold: 6,
                             },
                             ports: [
                                 {
@@ -549,6 +659,8 @@ function deploymentTemplate(
                             ],
                         },
                     ],
+                    dnsPolicy: "ClusterFirst",
+                    restartPolicy: "Always",
                 },
             },
             strategy: {
@@ -563,25 +675,25 @@ function deploymentTemplate(
     return d;
 }
 
+export type ServiceTemplateRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId">;
+
 /**
  * Create service to front a deployment for a repo and image.
  *
- * @param name service name
- * @param owner repository owner, i.e., organization or user
- * @param repo name of repository
- * @param teamId Atomist team ID
+ * @param req service template request
  * @return service resource
  */
-function serviceTemplate(name: string, owner: string, repo: string, teamId: string): Service {
+export function serviceTemplate(req: ServiceTemplateRequest): Service {
+    const name = resourceName(req);
     const s: Service = {
         kind: "Service",
         apiVersion: "v1",
         metadata: {
             name,
             labels: {
-                service: repo,
-                owner,
-                teamId,
+                service: req.repo,
+                owner: req.owner,
+                teamId: req.teamId,
                 creator,
             },
         },
@@ -595,9 +707,9 @@ function serviceTemplate(name: string, owner: string, repo: string, teamId: stri
                 },
             ],
             selector: {
-                app: repo,
-                owner,
-                teamId,
+                app: req.repo,
+                owner: req.owner,
+                teamId: req.teamId,
             },
             sessionAffinity: "None",
             type: "NodePort",
@@ -609,46 +721,41 @@ function serviceTemplate(name: string, owner: string, repo: string, teamId: stri
 const ingressName = "atm-gke-ri";
 const hostDns = "sdm.atomist.com";
 
+export type IngressRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "env">;
+
 /**
  * Create the ingress path for a deployment.
  *
- * @param owner repository owner, i.e., organization or user
- * @param repo name of repository
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req ingress request
  * @return ingress path for deployment service
  */
-export function ingressPath(owner: string, repo: string, teamId: string, env: string): string {
-    return `/${teamId}/${env}/${owner}/${repo}`;
+export function ingressPath(req: IngressRequest): string {
+    return `/${req.teamId}/${req.env}/${req.owner}/${req.repo}`;
 }
 
-export function ingressBaseUrl(owner: string, repo: string, teamId: string, env: string): string {
-    return `http://${hostDns}${ingressPath(owner, repo, teamId, env)}/`;
+/**
+ * Create the URL for a deployment.
+ *
+ * @param req ingress request
+ * @return ingress path for deployment service
+ */
+export function ingressBaseUrl(req: IngressRequest): string {
+    return `http://${hostDns}${ingressPath(req)}/`;
 }
 
 /**
  * Create a ingress HTTP path.
  *
- * @param service name of ingress service
- * @param owner repository owner, i.e., organization or user
- * @param repo name of repository
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req ingress request
  * @return ingress patch
  */
-function httpIngressPath(
-    service: string,
-    owner: string,
-    repo: string,
-    teamId: string,
-    env: string,
-): HTTPIngressPath {
-
-    const inPath = ingressPath(owner, repo, teamId, env);
+function httpIngressPath(req: IngressRequest): HTTPIngressPath {
+    const name = resourceName(req);
+    const inPath = ingressPath(req);
     const httpPath: HTTPIngressPath = {
         path: inPath,
         backend: {
-            serviceName: service,
+            serviceName: name,
             servicePort: 8080,
         },
     };
@@ -656,37 +763,26 @@ function httpIngressPath(
 }
 
 /**
- * Create the ingress for a namespace.
+ * Create the ingress for a deployment namespace.
  *
- * @param ns namespace to create ingress in
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req ingress request
  * @return service resource for ingress to use
  */
-function ingressTemplate(
-    ns: string,
-    service: string,
-    owner: string,
-    repo: string,
-    teamId: string,
-    env: string,
-): Ingress {
-
-    const httpPath: HTTPIngressPath = httpIngressPath(service, owner, repo, teamId, env);
+export function ingressTemplate(req: IngressRequest): Ingress {
+    const httpPath: HTTPIngressPath = httpIngressPath(req);
     const i: Ingress = {
         kind: "Ingress",
         apiVersion: "extensions/v1beta1",
         metadata: {
             name: ingressName,
-            namespace: ns,
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/",
             },
             labels: {
                 ingress: "nginx",
-                teamId,
-                env,
+                teamId: req.teamId,
+                env: req.env,
                 creator,
             },
         },
@@ -708,23 +804,11 @@ function ingressTemplate(
  * Create a patch to add a new path to the ingress rules.
  *
  * @param ing ingress resource to create patch for
- * @param service name of ingress service
- * @param owner repository owner, i.e., organization or user
- * @param repo name of repository
- * @param teamId Atomist team ID
- * @param env deployment environment, e.g., "production" or "testing"
+ * @param req ingress request
  * @return ingress patch
  */
-function ingressPatch(
-    ing: Ingress,
-    service: string,
-    owner: string,
-    repo: string,
-    teamId: string,
-    env: string,
-): Partial<Ingress> {
-
-    const httpPath: HTTPIngressPath = httpIngressPath(service, owner, repo, teamId, env);
+export function ingressPatch(ing: Ingress, req: IngressRequest): Partial<Ingress> {
+    const httpPath: HTTPIngressPath = httpIngressPath(req);
     const rules = ing.spec.rules;
     const paths = (rules && rules.length > 0) ? [...ing.spec.rules[0].http.paths, httpPath] : [httpPath];
     const patch: Partial<Ingress> = {

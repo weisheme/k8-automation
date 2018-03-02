@@ -162,6 +162,6 @@ export function createDeployCommitStatus(
 ): Promise<boolean> {
 
     const context = kubeDeployContextPrefix + env;
-    const url = ingressBaseUrl(owner, repo, teamId, env);
+    const url = ingressBaseUrl({ owner, repo, teamId, env });
     return createCommitStatus(github, owner, repo, sha, state, context, description, url);
 }
