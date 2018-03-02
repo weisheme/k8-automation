@@ -150,7 +150,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -192,7 +192,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -242,7 +242,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -276,7 +276,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -315,7 +315,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -368,7 +368,7 @@ describe("k8", () => {
                 spec: {
                     rules: [
                         {
-                            host: "sdm.atomist.com",
+                            host: "sdm.atomist.io",
                             http: {
                                 paths: [
                                     {
@@ -391,7 +391,7 @@ describe("k8", () => {
                 env: "testing",
             };
             const ip = ingressRemove(i, req);
-            const e: Partial<Ingress> = { spec: { rules: [{ host: "sdm.atomist.com", http: { paths: [] } }] } };
+            const e: Partial<Ingress> = { spec: { rules: [{ host: "sdm.atomist.io", http: { paths: [] } }] } };
             assert.deepStrictEqual(ip, e);
         });
 

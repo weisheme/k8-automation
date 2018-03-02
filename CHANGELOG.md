@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.0...HEAD
+
+## [0.5.0][] - 2018-03-02
+
+[0.5.0]: https://github.com/atomist/k8-automation/compare/0.5.0...0.5.0
+
+I/O release
+
+### Changed
+
+-   Use sdm.atomist.io for endpoint hostname
 
 ### Added
 

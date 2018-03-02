@@ -759,7 +759,7 @@ export function serviceTemplate(req: ServiceTemplateRequest): Service {
 }
 
 const ingressName = "atm-gke-ri";
-const hostDns = "sdm.atomist.com";
+const hostDns = "sdm.atomist.io";
 
 export type IngressRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "env">;
 
