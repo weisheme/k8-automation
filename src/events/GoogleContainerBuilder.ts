@@ -273,6 +273,7 @@ export function gcBuild(
         .then(() => {
             const status = "started";
             postBuildWebhook(owner, repo, branch, sha, status, teamId);
+            logger.debug(`building ${teamId}:${owner}:${repo}:${branch}:${sha}`);
             return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient);
         })
         .then(res => {

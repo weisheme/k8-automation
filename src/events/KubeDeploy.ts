@@ -64,6 +64,8 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
             const sha = s.commit.sha;
             const description = (s.description) ? s.description : undefined;
             const image = s.commit.images[0].imageName;
+            const depName = `${teamId}:${env}:${owner}:${repo}:${sha}`;
+            logger.debug(`deploying ${depName}`);
 
             const github = new Github();
             try {
@@ -97,10 +99,10 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
             return upsertDeployment(k8Config, owner, repo, teamId, image, env)
                 .catch(e => {
                     createDeployCommitStatus(github, owner, repo, sha, teamId, env, description, "failure");
-                    return Promise.reject(preErrMsg(e, `failed to deploy image ${image}`));
+                    return Promise.reject(preErrMsg(e, `failed to deploy ${depName}`));
                 })
                 .then(() => createDeployCommitStatus(github, owner, repo, sha, teamId, env, description)
-                    .catch(e => Promise.reject(preErrMsg(e, `deployed image ${image} but failed to update status`))))
+                    .catch(e => Promise.reject(preErrMsg(e, `deployed ${depName} but failed to update status`))))
                 .then(() => Success)
                 .catch(e => {
                     logger.error(e.message);

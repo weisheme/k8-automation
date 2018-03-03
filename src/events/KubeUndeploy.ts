@@ -64,6 +64,7 @@ export class KubeUndeploy implements HandleEvent<KubeUndeploySub.Subscription> {
             const teamId = s.commit.repo.org.team.id;
             const description = (s.description) ? s.description : undefined;
             const depName = `${teamId}/${env}/${owner}/${repo}`;
+            logger.debug(`deleting ${depName}`);
 
             const github = new Github();
             try {
