@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.1...HEAD
 
+### Added
+
+-   Retry to Kubernetes API calls
+
 ## [0.5.1][] - 2018-03-02
 
 [0.5.1]: https://github.com/atomist/k8-automation/compare/0.5.0...0.5.1

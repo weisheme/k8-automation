@@ -19,6 +19,7 @@ import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
 import * as path from "path";
+import promiseRetry = require("promise-retry");
 
 import { webhookBaseUrl } from "./atomistWebhook";
 import { preErrMsg, reduceResults } from "./error";
@@ -161,24 +162,21 @@ export function deleteDeployment(
         .then((ing: Ingress) => {
             const patch: Partial<Ingress> = ingressRemove(ing, req);
             if (patch.spec.rules[0].http.paths.length < 1) {
-                return ext.namespaces(ns).ingresses(ingressName).delete({})
-                    .catch(e => Promise.reject(preErrMsg(e, `failed to delete ingress`)));
+                return retryP(() => ext.namespaces(ns).ingresses(ingressName).delete({}), `delete ingress ${depStr}`);
             }
-            return ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
-                .catch(e => Promise.reject(preErrMsg(e, `failed to remove path from ingress`)));
+            return retryP(() => ext.namespaces(ns).ingresses(ingressName).patch({ body: patch }),
+                "remove path from ingress");
         }, e => logger.debug(`no ingress found for '${depStr}': ${e.message}`))
         .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
     const rmService: Promise<HandlerResult> = core.namespaces(ns).services(name).get()
-        .then((svc: Service) => {
-            return core.namespaces(ns).services(name).delete({})
-                .catch(e => Promise.reject(preErrMsg(e, `failed to delete service`)));
-        }, e => logger.debug(`no service found for '${depStr}': ${e.message}`))
+        .then((svc: Service) => retryP(() => core.namespaces(ns).services(name).delete({}), `delete service ${depStr}`),
+            e => logger.debug(`no service found for '${depStr}': ${e.message}`))
         .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
     const rmDeployment: Promise<HandlerResult> = ext.namespaces(ns).deployments(name).get()
-        .then((dep: Deployment) => {
-            return ext.namespaces(ns).deployments(name).delete({ body: { propagationPolicy: "Background" } })
-                .catch(e => Promise.reject(preErrMsg(e, `failed to delete deployment`)));
-        }, e => logger.debug(`no deployment found for '${depStr}': ${e.message}`))
+        .then((dep: Deployment) => retryP(
+            () => ext.namespaces(ns).deployments(name).delete({ body: { propagationPolicy: "Background" } }),
+            `delete deployment ${depStr}`),
+            e => logger.debug(`no deployment found for '${depStr}': ${e.message}`))
         .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
     return Promise.all([updateIngress, rmService, rmDeployment])
         .then(results => {
@@ -523,9 +521,9 @@ export interface Ingress {
 function updateDeployment(ext: k8.ApiGroup, dep: Deployment, image: string): Promise<any> {
     const name = dep.metadata.name;
     const ns = dep.metadata.namespace;
+    const depStr = `${ns}/${name}:${image}`;
     const patch: Partial<Deployment> = { spec: { template: { spec: { containers: [{ name, image }] } } } };
-    return ext.namespaces(ns).deployments(name).patch({ body: patch })
-        .catch(e => Promise.reject(preErrMsg(e, `failed to patch deployment ${ns}/${name} with image ${image}`)));
+    return retryP(() => ext.namespaces(ns).deployments(name).patch({ body: patch }), `patch deployment ${depStr}`);
 }
 
 /**
@@ -540,26 +538,23 @@ function createDeployment(req: DeploymentRequest): Promise<any> {
     const ns = space.metadata.name;
     const svc: Service = serviceTemplate(req);
     const dep: Deployment = deploymentTemplate(req);
+    const depStr = `${ns}/${name}`;
     return req.core.namespaces(ns).get()
         .catch(e => {
             logger.debug(`failed to get namespace ${ns}, creating it: ${e.message}`);
-            return req.core.namespaces.post({ body: space })
-                .catch(er => Promise.reject(preErrMsg(er, `failed to create namespace ${stringify(space)}`)));
+            return retryP(() => req.core.namespaces.post({ body: space }), `create namespace ${ns}`);
         })
-        .then(() => req.core.namespaces(ns).services.post({ body: svc })
-            .catch(e => Promise.reject(preErrMsg(e, `failed to create service: ${stringify(svc)}`))))
-        .then(() => req.ext.namespaces(ns).deployments.post({ body: dep })
-            .catch(e => Promise.reject(preErrMsg(e, `failed to create deployment: ${stringify(dep)}`))))
+        .then(() => retryP(() => req.core.namespaces(ns).services.post({ body: svc }), `create service ${depStr}`))
+        .then(() => retryP(() => req.ext.namespaces(ns).deployments.post({ body: dep }), `create deployment ${depStr}`))
         .then(() => req.ext.namespaces(ns).ingresses(ingressName).get())
         .then((ing: Ingress) => {
             const patch: Partial<Ingress> = ingressPatch(ing, req);
-            return req.ext.namespaces(ns).ingresses(ingressName).patch({ body: patch })
-                .catch(e => Promise.reject(preErrMsg(e, `failed to patch ingress: ${ing}+${stringify(patch)}`)));
+            return retryP(() => req.ext.namespaces(ns).ingresses(ingressName).patch({ body: patch }),
+                `patch ingress for ${depStr}`);
         }, e => {
             logger.debug(`failed to get ingress in namespace ${ns}, creating: ${e.message}`);
             const ing = ingressTemplate(req);
-            return req.ext.namespaces(ns).ingresses.post({ body: ing })
-                .catch(er => Promise.reject(preErrMsg(e, `failed to create ingress: ${ing}`)));
+            return retryP(() => req.ext.namespaces(ns).ingresses.post({ body: ing }), `create ingress for ${depStr}`);
         });
 }
 
@@ -896,4 +891,31 @@ export function ingressRemove(ing: Ingress, req: IngressRequest): Partial<Ingres
         },
     };
     return patch;
+}
+
+const defaultRetryOptions = {
+    retries: 10,
+    factor: 2,
+    minTimeout: 1 * 100,
+    maxTimeout: 5 * 1000,
+    randomize: true,
+};
+
+/**
+ * Retry kube API call.
+ */
+function retryP<T>(
+    k: () => Promise<T>,
+    desc: string,
+    options = defaultRetryOptions,
+): Promise<T> {
+
+    return promiseRetry(defaultRetryOptions, (retry, count) => {
+        logger.debug(`${desc} attempt ${count}`);
+        return k().catch(e => {
+            logger.debug(`error ${desc} attempt ${count}: ${e.message}`);
+            retry(e);
+        });
+    })
+        .catch(e => Promise.reject(preErrMsg(e, `failed to ${desc}`)));
 }
