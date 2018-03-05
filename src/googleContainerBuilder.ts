@@ -29,6 +29,7 @@ import * as util from "util";
 import { v4 as uuidv4 } from "uuid";
 
 import { AtomistBuildStatus, postBuildWebhook } from "./atomistWebhook";
+import { dockerNameComponent, dockerTag } from "./docker";
 import { preErrMsg } from "./error";
 
 type BuildStatus = "STATUS_UNKNOWN" | "QUEUED" | "WORKING" | "SUCCESS" | "FAILURE" |
@@ -182,7 +183,10 @@ const projectId = "reference-implementation-1";
  * @return Docker image tag in form of REGISTRY/PROJECT/OWNER/NAME:VERSION
  */
 export function imageTag(owner: string, repo: string, sha: string): string {
-    return `gcr.io/${projectId}/${owner}/${repo}:${sha}`;
+    const cleanOwner = dockerNameComponent(owner);
+    const cleanRepo = dockerNameComponent(repo);
+    const tag = dockerTag(sha);
+    return `gcr.io/${projectId}/${cleanOwner}/${cleanRepo}:${tag}`;
 }
 
 interface GetBuildResult {
@@ -219,34 +223,55 @@ function signedLogUrl(storage: Storage.Storage, buildId: string, logBucket: stri
 }
 
 /**
+ * Information needed to build a project on Google Container Builder.
+ */
+export interface ContainerBuildRequest {
+    /** path to repository on local file system */
+    dir: string;
+    /** repository owner, i.e., user or organization */
+    owner: string;
+    /** repository name */
+    repo: string;
+    /** commit branch */
+    branch: string;
+    /** commit SHA */
+    sha: string;
+    /** Atomist team ID */
+    teamId: string;
+}
+
+export interface ContainerBuildAuth {
+    /** Google Cloud JWT client */
+    jwtClient: JWT;
+}
+
+export type ContainerBuildAuthRequest = ContainerBuildRequest & ContainerBuildAuth;
+
+/**
+ * Create unique and information name for build.
+ *
+ * @param req build request
+ */
+export function buildName(req: ContainerBuildRequest): string {
+    return `${req.teamId}:${req.owner}:${req.repo}:${req.branch}:${req.sha}`;
+}
+
+/**
  * Tar, gzip, and upload current directory, start Google Container
  * Builder and poll until completion, returning the build status.
  *
- * @param dir path to repository on local file system
- * @param owner repository owner, i.e., user or organization
- * @param repo repository name
- * @param branch commit branch
- * @param sha commit SHA
- * @param jwtClient Google Cloud JWT client
+ * @param req container builder request
  * @return build status
  */
-export function googleContainerBuild(
-    dir: string,
-    owner: string,
-    repo: string,
-    branch: string,
-    sha: string,
-    teamId: string,
-    jwtClient: JWT,
-): Promise<ContainerBuildResult> {
+export function googleContainerBuild(req: ContainerBuildAuthRequest): Promise<ContainerBuildResult> {
 
-    const repoSlug = `${owner}/${repo}`;
-    logger.debug("starting build of %s", repoSlug);
+    const buildStr = buildName(req);
+    logger.debug(`starting build ${buildStr}`);
     const bucket = "reference-implementation-1-repos-1";
-    const srcTar = `${owner}-${repo}-${uuidv4()}.tgz`;
-    const srcTarPath = path.join(dir, srcTar);
+    const srcTar = `${req.owner}-${req.repo}-${uuidv4()}.tgz`;
+    const srcTarPath = path.join(req.dir, srcTar);
     const cloudbuild = google.cloudbuild("v1");
-    const image = imageTag(owner, repo, sha);
+    const image = imageTag(req.owner, req.repo, req.sha);
     const buildPayload: BuildPayload = {
         projectId,
         resource: {
@@ -261,19 +286,19 @@ export function googleContainerBuild(
             logsBucket: buildLogBucket,
             tags: ["customer", "reference-implementation"],
         },
-        auth: jwtClient,
+        auth: req.jwtClient,
     };
     let storage: Storage.Storage;
     const cleanup: Array<() => Promise<void>> = [];
 
-    return tar.create({ cwd: dir, file: srcTarPath, filter: nodeFilter, gzip: true }, ["."])
+    return tar.create({ cwd: req.dir, file: srcTarPath, filter: nodeFilter, gzip: true }, ["."])
         .catch(e => Promise.reject(preErrMsg(e, `failed to create ${srcTar}`)))
         .then(() => {
-            logger.debug("created tarball %s", srcTar);
+            logger.debug(`created tarball ${srcTar}`);
             cleanup.push(() => fs.unlink(srcTarPath));
             const storageCredentials: Storage.Credentials = {
-                client_email: jwtClient.email,
-                private_key: jwtClient.key,
+                client_email: req.jwtClient.email,
+                private_key: req.jwtClient.key,
             };
             const storageConfig: Storage.ConfigurationObject = { credentials: storageCredentials };
             try {
@@ -285,7 +310,7 @@ export function googleContainerBuild(
                 .catch(e => Promise.reject(preErrMsg(e, `failed to upload ${srcTarPath} to ${bucket}`)));
         })
         .then(() => {
-            logger.debug("uploaded %s to %s", srcTarPath, bucket);
+            logger.debug(`uploaded ${srcTarPath} to ${bucket}`);
             cleanup.push(() => storage.bucket(bucket).file(srcTar).delete().then(() => { return; }));
             let pCreateBuild: any;
             try {
@@ -293,7 +318,7 @@ export function googleContainerBuild(
             } catch (e) {
                 return Promise.reject(preErrMsg(e, `failed to promisify builds.create`));
             }
-            logger.debug("calling builds.create for %s", repoSlug);
+            logger.debug(`calling builds.create for ${buildStr}`);
             return pCreateBuild(buildPayload, {})
                 .catch((e: Error) => Promise.reject(preErrMsg(e, `failed to start build`)));
         })
@@ -315,7 +340,8 @@ export function googleContainerBuild(
             if (buildResponse.logsBucket) {
                 const status = "started";
                 signedLogUrl(storage, buildId, buildResponse.logsBucket)
-                    .then(logUrl => postBuildWebhook(owner, repo, branch, sha, status, teamId, logUrl));
+                    .then(logUrl => postBuildWebhook(req.owner, req.repo, req.branch, req.sha, status,
+                        req.teamId, logUrl));
             }
             let pGetBuild: any;
             try {
@@ -326,7 +352,7 @@ export function googleContainerBuild(
             const getPayload = {
                 projectId,
                 id: buildId,
-                auth: jwtClient,
+                auth: req.jwtClient,
             };
             const retryOptions = {
                 retries: 12 * 60 / 5, // default build timeout is 600 s
@@ -334,10 +360,10 @@ export function googleContainerBuild(
                 minTimeout: 5 * 1000,
                 maxTimeout: 5 * 1000,
             };
-            logger.debug("starting to poll %s build %s", repoSlug, buildId);
-            return promiseRetry(retryOptions, (retry, retryCount) => {
-                if (retryCount % 12 === 0) {
-                    logger.debug("polling %s build %s count %d", repoSlug, buildId, retryCount);
+            logger.debug(`starting to poll ${buildStr} build ${buildId}`);
+            return promiseRetry(retryOptions, (retry, count) => {
+                if (count % 12 === 0) {
+                    logger.debug(`polling ${buildStr} build ${buildId} count ${count}`);
                 }
                 return pGetBuild(getPayload, {})
                     .then((getResponse: any) => {
@@ -354,7 +380,7 @@ export function googleContainerBuild(
                             return Promise.reject(new Error(`build ${br.id} not done: ${status}`));
                         }
                         if (!br.id || !br.logsBucket) {
-                            logger.warn(`${repoSlug} get build response missing ID and/or logsBucket: ` +
+                            logger.warn(`${buildStr} get build response missing ID and/or logsBucket: ` +
                                 stringify(br));
                             return { status };
                         }
@@ -392,14 +418,14 @@ export function googleContainerBuild(
             const cbRes: ContainerBuildResult = { status: atomistStatus, logUrl: getResponse.logUrl };
             return Promise.all(cleanup.map(c => c()))
                 .then(() => cbRes, e => {
-                    logger.warn("failed to clean up %s build: %s", repoSlug, e.message);
+                    logger.warn(`failed to clean up ${buildStr} build: ${e.message}`);
                     return cbRes;
                 });
         })
         .catch(err => {
             return Promise.all(cleanup.map(c => c()))
                 .then(() => Promise.reject(err), e => {
-                    err.message = `${err.message}; failed to clean up ${repoSlug} build: ${e.message}`;
+                    err.message = `${err.message}; failed to clean up ${buildStr} build: ${e.message}`;
                     return Promise.reject(err);
                 });
         });

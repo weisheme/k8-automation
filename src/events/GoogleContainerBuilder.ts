@@ -41,10 +41,10 @@ import * as stringify from "json-stringify-safe";
 import * as path from "path";
 import * as tmp from "tmp-promise";
 
-import { postBuildWebhook, postLinkImageWebhook } from "../atomistWebhook";
+import { AtomistBuildStatus, postBuildWebhook, postLinkImageWebhook } from "../atomistWebhook";
 import { preErrMsg, reduceResults } from "../error";
 import { createBuildCommitStatus, kubeBuildContextPrefix } from "../github";
-import { googleContainerBuild, imageTag } from "../googleContainerBuilder";
+import { buildName, ContainerBuildAuthRequest, googleContainerBuild, imageTag } from "../googleContainerBuilder";
 import { GoogleContainerBuilderSub } from "../typings/types";
 
 @EventHandler("use Google Container Builder to build a Docker image for Spring Boot apps",
@@ -95,7 +95,10 @@ export class GoogleContainerBuilder implements HandleEvent<GoogleContainerBuilde
             );
 
             return jwtClient.authorize()
-                .then(tokens => cloneAndBuild(s, branch, jwtClient, github), e => {
+                .then(tokens => {
+                    return cloneAndBuild(s, branch, jwtClient, github)
+                        .catch(e => ({ code: 1, message: e.message }));
+                }, e => {
                     logger.warn("failed to authorize with Google Cloud, will not perform Google Container builds: " +
                         e.message);
                     return Success;
@@ -130,6 +133,11 @@ function eligibleBuildStatus(s: GoogleContainerBuilderSub.Status): string {
     return branch;
 }
 
+export interface GitHubAuth {
+    /** authenticated Github @octokit/rest client */
+    github: Github;
+}
+
 /**
  * Clone Git repo in temp directory and checkout commit, then call checkAndBuild.
  *
@@ -146,34 +154,38 @@ export function cloneAndBuild(
     github: Github,
 ): Promise<HandlerResult> {
 
-    const repo = s.commit.repo.name;
-    const owner = s.commit.repo.org.owner;
-    const repoSlug = `${owner}/${repo}`;
-    const sha = s.commit.sha;
-    const teamId = s.commit.repo.org.team.id;
+    const req: ContainerBuildAuthRequest & GitHubAuth = {
+        dir: ".",
+        owner: s.commit.repo.org.owner,
+        repo: s.commit.repo.name,
+        branch,
+        sha: s.commit.sha,
+        teamId: s.commit.repo.org.team.id,
+        jwtClient,
+        github,
+    };
+    const buildStr = buildName(req);
 
     return tmp.dir({ unsafeCleanup: true })
-        .catch(e => Promise.reject(preErrMsg(e, `failed to create temp dir for ${repoSlug}`)))
+        .catch(e => Promise.reject(preErrMsg(e, `failed to create temp dir for ${buildStr}`)))
         .then(tmpDir => {
-            const projectDir = path.join(tmpDir.path, repo);
-            const cloneUrl = `https://github.com/${repoSlug}.git`;
-            const cloneCmd = `git clone --quiet --depth 10 --branch ${branch} ${cloneUrl} ${repo}`;
+            req.dir = path.join(tmpDir.path, req.repo);
+            const cloneUrl = `https://github.com/${req.owner}/${req.repo}.git`;
+            const cloneCmd = `git clone --quiet --depth 10 --branch ${req.branch} ${cloneUrl} ${req.repo}`;
             return exec(cloneCmd, { cwd: tmpDir.path })
                 .then(() => {
-                    return exec(`git checkout --quiet --force ${sha}`, { cwd: projectDir })
+                    return exec(`git checkout --quiet --force ${req.sha}`, { cwd: req.dir })
                         .then(() => {
-                            return checkAndBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github)
-                                .catch(e => {
-                                    logger.error(`build of ${repoSlug}:${sha} failed: ${e.message}`);
-                                    return Failure;
-                                });
+                            return checkAndBuild(req);
                         }, e => {
-                            logger.warn(`failed to check out ${repoSlug}:${sha}, skipping: ${e.message}`);
-                            return Success;
+                            const msg = `failed to check out ${buildStr}, skipping build: ${e.message}`;
+                            logger.warn(msg);
+                            return { code: 0, message: msg };
                         });
                 }, e => {
-                    logger.warn(`failed to clone ${repoSlug}, assuming private repo, skipping: ${e.message}`);
-                    return Success;
+                    const msg = `failed to clone ${buildStr}, assuming private repo, skipping: ${e.message}`;
+                    logger.warn(msg);
+                    return { code: 0, message: msg };
                 })
                 .then(res => {
                     tmpDir.cleanup();
@@ -185,36 +197,26 @@ export function cloneAndBuild(
 /**
  * Ensure the project is a valid sample Spring project then build.
  *
- * @param projectDir file system location of the project to buidl
- * @param owner repo owner
- * @param repo repo name
- * @param branch commit branch
- * @param sha commit SHA
- * @param teamId ID of Atomist team
- * @param jwtClient Google Cloud JWT client
- * @param github authenticated Github @octokit/rest client
- * @return handler result
+ * @param req project build request
+ * @return build status
  */
-export function checkAndBuild(
-    projectDir: string,
-    owner: string,
-    repo: string,
-    branch: string,
-    sha: string,
-    teamId: string,
-    jwtClient: JWT,
-    github: Github,
-): Promise<HandlerResult> {
-
-    const repoSlug = `${owner}/${repo}`;
-    return gcbEligible(projectDir)
-        .catch(e => Promise.reject(preErrMsg(e, `failed to check eligibility of ${repoSlug}`)))
+export function checkAndBuild(req: ContainerBuildAuthRequest & GitHubAuth): Promise<HandlerResult> {
+    const buildStr = buildName(req);
+    return gcbEligible(req.dir)
+        .catch(e => Promise.reject(preErrMsg(e, `failed to check eligibility of project ${buildStr}`)))
         .then(eligible => {
             if (!eligible) {
-                logger.debug(`repo ${repoSlug} does not meet GCB eligibility`);
-                return Success;
+                const msg = `project ${buildStr} does not meet GCB eligibility`;
+                logger.debug(msg);
+                return { code: 0, message: msg };
             }
-            return gcBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient, github);
+            return gcBuild(req)
+                .then(status => {
+                    if (status === "passed") {
+                        return Success;
+                    }
+                    return { code: 1, message: `project ${buildStr} build status: ${status}` };
+                });
         });
 }
 
@@ -243,53 +245,36 @@ export function gcbEligible(projectDir: string): Promise<boolean> {
  * Build the project in projectDir, sending build and link-image webhooks
  * along the way.
  *
- * @param projectDir file system location of the project to build
- * @param owner repo owner
- * @param repo repo name
- * @param branch commit branch
- * @param sha commit SHA
- * @param teamId ID of Atomist team
- * @param jwtClient Google Cloud JWT client
- * @param github authenticated Github @octokit/rest client
- * @return handler result
+ * @param req project build request
+ * @return build status
  */
-export function gcBuild(
-    projectDir: string,
-    owner: string,
-    repo: string,
-    branch: string,
-    sha: string,
-    teamId: string,
-    jwtClient: JWT,
-    github: Github,
-): Promise<HandlerResult> {
-
-    const repoSlug = `${owner}/${repo}`;
-    const context = `${kubeBuildContextPrefix}${branch}`;
+export function gcBuild(req: ContainerBuildAuthRequest & GitHubAuth): Promise<AtomistBuildStatus> {
+    const buildStr = buildName(req);
+    const context = `${kubeBuildContextPrefix}${req.branch}`;
     const ciSrc = path.join(appRoot.path, "assets", "ci");
 
-    return fs.copy(ciSrc, projectDir)
-        .catch(e => Promise.reject(preErrMsg(e, `failed to copy ${ciSrc} to ${projectDir}`)))
+    return fs.copy(ciSrc, req.dir)
+        .catch(e => Promise.reject(preErrMsg(e, `failed to copy ${ciSrc} to ${req.dir}: ${e.message}`)))
         .then(() => {
             const status = "started";
-            postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            logger.debug(`building ${teamId}:${owner}:${repo}:${branch}:${sha}`);
-            return googleContainerBuild(projectDir, owner, repo, branch, sha, teamId, jwtClient);
+            postBuildWebhook(req.owner, req.repo, req.branch, req.sha, status, req.teamId);
+            logger.debug(`building ${buildStr}`);
+            return googleContainerBuild(req);
         })
         .then(res => {
-            logger.debug(`${repoSlug}:${sha} build status: ${res.status}`);
+            logger.debug(`${buildStr} build status: ${res.status}`);
             if (res.status === "passed") {
-                const image = imageTag(owner, repo, sha);
-                postLinkImageWebhook(owner, repo, sha, image, teamId);
+                const image = imageTag(req.owner, req.repo, req.sha);
+                postLinkImageWebhook(req.owner, req.repo, req.sha, image, req.teamId);
             }
-            postBuildWebhook(owner, repo, branch, sha, res.status, teamId, res.logUrl);
-            createBuildCommitStatus(github, owner, repo, sha, res.status, context, res.logUrl);
-            return Success;
+            postBuildWebhook(req.owner, req.repo, req.branch, req.sha, res.status, req.teamId, res.logUrl);
+            createBuildCommitStatus(req.github, req.owner, req.repo, req.sha, res.status, context, res.logUrl);
+            return res.status;
         })
         .catch(e => {
             const status = "error";
-            postBuildWebhook(owner, repo, branch, sha, status, teamId);
-            createBuildCommitStatus(github, owner, repo, sha, status, context);
-            return Promise.reject(preErrMsg(e, `build of ${repoSlug} in ${projectDir} errored`));
+            postBuildWebhook(req.owner, req.repo, req.branch, req.sha, status, req.teamId);
+            createBuildCommitStatus(req.github, req.owner, req.repo, req.sha, status, context);
+            return Promise.reject(preErrMsg(e, `build of ${buildStr} in ${req.dir} errored`));
         });
 }
