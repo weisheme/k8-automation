@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.2...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.3...HEAD
+
+## [0.5.3][] - 2018-03-05
+
+[0.5.3]: https://github.com/atomist/k8-automation/compare/0.5.2...0.5.3
+
+Lowercase release
 
 ### Changed
 
