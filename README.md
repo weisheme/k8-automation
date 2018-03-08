@@ -2,6 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/%40atomist%2Fk8-automation.svg)](https://badge.fury.io/js/%40atomist%2Fk8-automation)
 [![Build Status](https://travis-ci.org/atomist/k8-automation.svg?branch=master)](https://travis-ci.org/atomist/k8-automation)
+[![Docker Pulls](https://img.shields.io/docker/pulls/atomist/k8-automation.svg)](https://hub.docker.com/r/atomist/k8-automation/)
 
 This repository contains automations for deploying to Kubernetes using
 the [Atomist][atomist] API.  These examples use the
@@ -21,14 +22,54 @@ the [Atomist Developer Guide][dev].
 [docs]: https://docs.atomist.com/ (Atomist User Guide)
 [dev]: https://docs.atomist.com/developer/ (Atomist Developer Guide)
 
-### Slack and GitHub
+### GitHub account
 
-Atomist automations work best when connected to [Slack][slackhq]
-and [GitHub][gh].  If you do not have access to a Slack team and/or
-GitHub organization, it is easy to create your own.
+You must have a GitHub account, either GitHub.com or GitHub Enterprise
+(GHE).  If you want to use Atomist with GHE, please [contact
+Atomist](mailto:support@atomist.com).  The remainder of these
+instructions assume you have a GitHub.com account.  If you do not
+already have a GitHub.com account, you can [create
+one][github-create].
 
--   Create a [Slack team][slack-team]
--   Create a [GitHub organization][gh-org]
+[github-create]: https://github.com/join (Join GitHub)
+
+### Atomist workspace
+
+You also need to sign up with Atomist and create a workspace.  Once
+you have a GitHub.com account, you can sign up with Atomist at
+[https://app.atomist.com/][atm-app].  Once you are registered with
+Atomist, you can create an Atomist workspace and add your GitHub user
+and/or organizations to that workspace.
+
+[atm-app]: https://app.atomist.com/ (Atomist Web Interface)
+
+### Kubernetes
+
+This automation works with [Kubernetes][kube], so you need a
+Kubernetes cluster with a functioning ingress controller, such as
+[ingress-nginx][].
+
+If you do not have access to a Kubernetes cluster, you can create one
+on your local system using [minikube][].  Once you have minikube
+running, you can create an ingress controller in the cluster using the
+ingress add-on.
+
+```console
+$ minikube start
+$ minikube addons enable ingress
+```
+
+[kube]: https://kubernetes.io/ (Kubernetes)
+[ingress-nginx]: https://github.com/kubernetes/ingress-nginx (Ingress nginx)
+[minikube]: https://kubernetes.io/docs/getting-started-guides/minikube/ (Minikube)
+
+### Slack
+
+Atomist has a powerful [Slack][slackhq] application, allowing you to
+see and act on your development activity right in Slack.  Slack is
+_not_ a requirement for using Atomist, but if you try it, you'll
+probably like it.  If you do not have access to a Slack team, it is
+easy to [create your own][slack-team].
 
 In your Slack team, install the Atomist app in Slack, click the button
 below.
@@ -42,83 +83,8 @@ below.
 Once installed, the Atomist bot will guide you through connecting
 Atomist, Slack, and GitHub.
 
-If you'd rather not set up your own Slack team and GitHub
-organization, please reach out to members of Atomist in the `#support`
-channel of [atomist-community Slack team][slack].  You'll receive an
-invitation to a [Slack team][play-slack]
-and [GitHub organization][play-gh] that can be used to explore this
-new approach to writing and running automations.
-
-> _The Slack team ID for atomist-playground is `T7GMF5USG`._
-
 [slackhq]: https://slack.com/ (Slack)
-[gh]: https://github.com/ (GitHub)
 [slack-team]: https://slack.com/get-started#create (Create a Slack Team)
-[gh-org]: https://github.com/account/organizations/new (Create a GitHub Organization)
-[play-slack]: https://atomist-playground.slack.com (Atomist Playground Slack)
-[play-gh]: https://github.com/atomist-playground (Atomist Playground GitHub Organization)
-
-### Node.js
-
-You will need to have [Node.js][node] installed.  To verify that the
-right versions are installed, please run:
-
-```console
-$ node -v
-v8.4.0
-$ npm -v
-5.4.1
-```
-
-The `node` version should be 8 or greater and the `npm` version should
-be 5 or greater.
-
-[node]: https://nodejs.org/ (Node.js)
-
-### Cloning the repository and installing dependencies
-
-To get started run the following commands to clone the project,
-install its dependencies, and build the project:
-
-```console
-$ git clone git@github.com:atomist/k8-automation.git
-$ cd k8-automation
-$ npm install
-$ npm run build
-```
-
-### Configuring your environment
-
-If this is the first time you will be running an Atomist API client
-locally, you should first configure your system using the `atomist`
-script:
-
-```console
-$ `npm bin`/atomist config
-```
-
-The script does two things: records what Slack team you want your
-automations running in and creates
-a [GitHub personal access token][token] with "repo" and "read:org"
-scopes.
-
-The script will prompt you for you Slack team ID, or you can supply it
-using the `--slack-team TEAM_ID` command-line option.  You must run
-the automations in a Slack team of which you are a member.  You can
-get the Slack team ID by typing `team` in a DM to the Atomist bot.
-
-The script will prompt you for your GitHub credentials.  It needs them
-to create the GitHub personal access token.  Atomist does not store
-your credentials and only writes the generated token to your local
-machine.
-
-The Atomist API client authenticates using a GitHub personal access
-token.  The Atomist API uses the token to confirm you are who you say
-you are and are in a GitHub organization connected to the Slack team
-in which you are running the automations.  In addition, it uses the
-token when performing any operations that access the GitHub API.
-
-[token]: https://github.com/settings/tokens (GitHub Personal Access Tokens)
 
 ## Running
 
@@ -139,28 +105,31 @@ RBAC, the default system account provided to all pods should have
 sufficient permissions to run k8-automation.
 
 Before deploying either with or without RBAC, you will need to create
-a namespace for the k8-automation resources and a secret with your
-Atomist team ID and GitHub personal access token.  If you have
-followed the instructions above, both pieces of information will be
-available in the `client.config.json` file in the `.atomist` directory
-in your home directory.  You can create the namespace and secret with
-the following commands.
+a namespace for the k8-automation resources and a secret with the
+k8-automation configuration.  The only required configuration values
+are the `teamIds` and `token`, but you may also want to specify
+`custom.hostUrl` so GitHub commit statuses with the service endpoint
+have the proper URL.  The `teamIds` should be your Atomist team ID(s),
+which you can get from the settings page for your Atomist workspace or
+by sending `team` as a message to the Atomist bot, e.g., `@atomist team`,
+in Slack.  The `token` should be a [GitHub personal access
+token][ghpat] with `read:org` and `repo` scopes.
 
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
-$ kubectl create secret generic automation-config \
-    --from-literal=teamId="$(jq -r '.teamIds[0]' "$HOME/.atomist/client.config.json")" \
-    --from-literal=githubToken="$(jq -r .token "$HOME/.atomist/client.config.json")"
+$ kubectl create secret --namespace=k8-automation generic automation \
+    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"http://IP"}}'
 ```
 
-If you prefer, you can create your own GitHub personal access token
-with "repo" and "read:org" scopes and get your team ID from
-https://app.atomist.com/teams or by sending `team` as a message to the
-Atomist bot, e.g., `@atomist team`, in Slack.
+In the above commands, replace `TEAM_ID` with your Atomist team ID,
+`TOKEN` with your GitHub token, and `IP` with the IP address of your
+ingress controller.  For minikube, you can get this from the `minikube
+ip` command.
 
 [kube]: ./assets/kube/ (k8-automation Kubernetes Resources)
 [rbac]: https://kubernetes.io/docs/admin/authorization/rbac/ (Kubernetes RBAC)
 [gke-rbac]: https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control (GKE RBAC)
+[ghpat]: https://github.com/settings/tokens (GitHub Personal Access Tokens)
 
 ### RBAC
 
@@ -223,7 +192,72 @@ If you find a problem, please create an [issue][].
 
 ## Development
 
-You will need to install [node][] to build and test this project.
+Before developing this project, you will need to install Node.js and
+configure your environment.
+
+### Node.js
+
+You will need to have [Node.js][node] installed.  To verify that the
+right versions are installed, please run:
+
+```console
+$ node -v
+v9.7.1
+$ npm -v
+5.6.0
+```
+
+The `node` version should be 8 or greater and the `npm` version should
+be 5 or greater.
+
+[node]: https://nodejs.org/ (Node.js)
+
+### Cloning the repository and installing dependencies
+
+To get started run the following commands to clone the project,
+install its dependencies, and build the project:
+
+```console
+$ git clone git@github.com:atomist/k8-automation.git
+$ cd k8-automation
+$ npm install
+$ npm run build
+```
+
+### Configuring your environment
+
+If this is the first time you will be running an Atomist API client
+locally, you should first configure your system using the `atomist`
+script:
+
+```console
+$ `npm bin`/atomist config
+```
+
+The script does two things: records what Slack team you want your
+automations running in and creates
+a [GitHub personal access token][token] with "repo" and "read:org"
+scopes.
+
+The script will prompt you for your Atomist workspace/team ID, or you
+can supply it using the `--team TEAM_ID` command-line option.  You can
+get your Atomist team ID from the settings page for your Atomist
+workspace or by typing `team` in a DM to the Atomist bot.
+
+The script will prompt you for your GitHub credentials.  It needs them
+to create the GitHub personal access token.  Atomist does not store
+your credentials and only writes the generated token to your local
+machine.
+
+The Atomist API client authenticates using a GitHub personal access
+token.  The Atomist API uses the token to confirm you are who you say
+you are and are in a GitHub organization connected to the Slack team
+in which you are running the automations.  In addition, it uses the
+token when performing any operations that access the GitHub API.
+
+[token]: https://github.com/settings/tokens (GitHub Personal Access Tokens)
+
+### Running locally
 
 You can run this automation client locally, allowing you to change the
 source code of this project and immediately see the effects in your
@@ -245,7 +279,7 @@ To download and run the Docker image of this project, run the
 following command
 
 ```console
-$ docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAM=TEAM_ID \
+$ docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAMS=TEAM_ID \
     atomist/k8-automation:VERSION
 ```
 

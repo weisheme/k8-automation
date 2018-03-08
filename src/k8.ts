@@ -22,6 +22,7 @@ import * as path from "path";
 import promiseRetry = require("promise-retry");
 
 import { webhookBaseUrl } from "./atomistWebhook";
+import { hostUrl } from "./config";
 import { preErrMsg, reduceResults } from "./error";
 
 /**
@@ -754,7 +755,6 @@ export function serviceTemplate(req: ServiceTemplateRequest): Service {
 }
 
 const ingressName = "atm-gke-ri";
-const hostDns = "sdm.atomist.io";
 
 export type IngressRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "env">;
 
@@ -774,8 +774,8 @@ export function ingressPath(req: IngressRequest): string {
  * @param req ingress request
  * @return ingress path for deployment service
  */
-export function ingressBaseUrl(req: IngressRequest): string {
-    return `https://${hostDns}${ingressPath(req)}/`;
+export function endpointBaseUrl(req: IngressRequest): string {
+    return `${hostUrl}${ingressPath(req)}/`;
 }
 
 /**

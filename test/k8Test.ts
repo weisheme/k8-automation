@@ -19,6 +19,7 @@ import * as assert from "power-assert";
 
 import {
     deploymentTemplate,
+    endpointBaseUrl,
     Ingress,
     ingressPatch,
     ingressRemove,
@@ -119,6 +120,21 @@ describe("k8", () => {
             assert.deepStrictEqual(s, e);
         });
 
+    });
+
+    describe("endpointBaseUrl", () => {
+
+        it("should return the default", () => {
+            const req = {
+                teamId: "murray",
+                env: "beverly",
+                owner: "barry",
+                repo: "adam",
+            };
+            const u = endpointBaseUrl(req);
+            const e = "http://localhost/murray/beverly/barry/adam/";
+            assert(u === e);
+        });
     });
 
     describe("ingressTemplate", () => {
