@@ -21,14 +21,34 @@ the [Atomist Developer Guide][dev].
 [docs]: https://docs.atomist.com/ (Atomist User Guide)
 [dev]: https://docs.atomist.com/developer/ (Atomist Developer Guide)
 
-### Slack and GitHub
+### GitHub account
 
-Atomist automations work best when connected to [Slack][slackhq]
-and [GitHub][gh].  If you do not have access to a Slack team and/or
-GitHub organization, it is easy to create your own.
+You must have a GitHub account, either GitHub.com or GitHub Enterprise
+(GHE).  If you want to use Atomist with GHE, please [contact
+Atomist](mailto:support@atomist.com).  The remainder of these
+instructions assume you have a GitHub.com account.  If you do not
+already have a GitHub.com account, you can [create
+one][github-create].
 
--   Create a [Slack team][slack-team]
--   Create a [GitHub organization][gh-org]
+[github-create]: https://github.com/join (Join GitHub)
+
+### Atomist workspace
+
+You also need to sign up with Atomist and create a workspace.  Once
+you have a GitHub.com account, you can sign up with Atomist at
+[https://app.atomist.com/][atm-app].  Once you are registered with
+Atomist, you can create an Atomist workspace and add your GitHub user
+and/or organizations to that workspace.
+
+[atm-app]: https://app.atomist.com/ (Atomist Web Interface)
+
+### Slack
+
+Atomist has a powerful [Slack][slackhq] application, allowing you to
+see and act on your development activity right in Slack.  Slack is not
+a requirement for using Atomist, but if you try it, you'll probably
+like it.  If you do not have access to a Slack team, it is easy to
+[create your own][slack-team].
 
 In your Slack team, install the Atomist app in Slack, click the button
 below.
@@ -42,21 +62,8 @@ below.
 Once installed, the Atomist bot will guide you through connecting
 Atomist, Slack, and GitHub.
 
-If you'd rather not set up your own Slack team and GitHub
-organization, please reach out to members of Atomist in the `#support`
-channel of [atomist-community Slack team][slack].  You'll receive an
-invitation to a [Slack team][play-slack]
-and [GitHub organization][play-gh] that can be used to explore this
-new approach to writing and running automations.
-
-> _The Slack team ID for atomist-playground is `T7GMF5USG`._
-
 [slackhq]: https://slack.com/ (Slack)
-[gh]: https://github.com/ (GitHub)
 [slack-team]: https://slack.com/get-started#create (Create a Slack Team)
-[gh-org]: https://github.com/account/organizations/new (Create a GitHub Organization)
-[play-slack]: https://atomist-playground.slack.com (Atomist Playground Slack)
-[play-gh]: https://github.com/atomist-playground (Atomist Playground GitHub Organization)
 
 ### Node.js
 
@@ -65,9 +72,9 @@ right versions are installed, please run:
 
 ```console
 $ node -v
-v8.4.0
+v9.7.1
 $ npm -v
-5.4.1
+5.6.0
 ```
 
 The `node` version should be 8 or greater and the `npm` version should
@@ -102,10 +109,10 @@ automations running in and creates
 a [GitHub personal access token][token] with "repo" and "read:org"
 scopes.
 
-The script will prompt you for you Slack team ID, or you can supply it
-using the `--slack-team TEAM_ID` command-line option.  You must run
-the automations in a Slack team of which you are a member.  You can
-get the Slack team ID by typing `team` in a DM to the Atomist bot.
+The script will prompt you for your Atomist workspace/team ID, or you
+can supply it using the `--team TEAM_ID` command-line option.  You can
+get your Atomist team ID from the settings page for your Atomist
+workspace or by typing `team` in a DM to the Atomist bot.
 
 The script will prompt you for your GitHub credentials.  It needs them
 to create the GitHub personal access token.  Atomist does not store
@@ -148,15 +155,15 @@ the following commands.
 
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
-$ kubectl create secret generic automation-config \
-    --from-literal=teamId="$(jq -r '.teamIds[0]' "$HOME/.atomist/client.config.json")" \
+$ kubectl create secret --namespace=k8-automation generic automation-config \
+    --from-literal=teamIds="$(jq -r '.teamIds | join(",")' "$HOME/.atomist/client.config.json")" \
     --from-literal=githubToken="$(jq -r .token "$HOME/.atomist/client.config.json")"
 ```
 
 If you prefer, you can create your own GitHub personal access token
-with "repo" and "read:org" scopes and get your team ID from
-https://app.atomist.com/teams or by sending `team` as a message to the
-Atomist bot, e.g., `@atomist team`, in Slack.
+with "repo" and "read:org" scopes and get your team ID from the
+settings page for your Atomist workspace or by sending `team` as a
+message to the Atomist bot, e.g., `@atomist team`, in Slack.
 
 [kube]: ./assets/kube/ (k8-automation Kubernetes Resources)
 [rbac]: https://kubernetes.io/docs/admin/authorization/rbac/ (Kubernetes RBAC)
@@ -245,7 +252,7 @@ To download and run the Docker image of this project, run the
 following command
 
 ```console
-$ docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAM=TEAM_ID \
+$ docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAMS=TEAM_ID \
     atomist/k8-automation:VERSION
 ```
 

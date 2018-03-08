@@ -2,6 +2,7 @@ import {
     EventFired,
     HandlerContext,
     HandlerResult,
+    logger,
 } from "@atomist/automation-client";
 import { CommandInvocation } from "@atomist/automation-client/internal/invoker/Payload";
 import {
@@ -9,22 +10,22 @@ import {
     EventIncoming,
 } from "@atomist/automation-client/internal/transport/RequestProcessor";
 import * as nsp from "@atomist/automation-client/internal/util/cls";
-import { logger } from "@atomist/automation-client/internal/util/logger";
 import {
     AutomationEventListener,
     AutomationEventListenerSupport,
 } from "@atomist/automation-client/server/AutomationEventListener";
 import { Destination, MessageOptions } from "@atomist/automation-client/spi/message/MessageClient";
-import { SlackMessage } from "@atomist/slack-messages/SlackMessages";
-import * as appRoot from "app-root-path";
+
+import assign = require("lodash.assign");
 import { createLogger } from "logzio-nodejs";
 import * as serializeError from "serialize-error";
+import logzioWinstonTransport = require("winston-logzio");
 
-/* tslint:disable */
-const logzioWinstonTransport = require("winston-logzio");
-const _assign = require("lodash.assign");
-const pj = require(`${appRoot.path}/package.json`);
-/* tslint:enable */
+import { configuration } from "../atomist.config";
+
+export interface LogzioOptions {
+    token: string;
+}
 
 export class LogzioAutomationEventListener extends AutomationEventListenerSupport
     implements AutomationEventListener {
@@ -161,11 +162,11 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
             protocol: "https",
             bufferSize: 10,
             extraFields: {
-                "service": pj.name,
-                "artifact": pj.name,
-                "version": pj.version,
-                "environment": options.environmentId,
-                "application-id": options.applicationId,
+                "service": configuration.name,
+                "artifact": configuration.name,
+                "version": configuration.version,
+                "environment": configuration.environment,
+                "application-id": configuration.application,
                 "process-id": process.pid,
             },
         };
@@ -185,7 +186,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
             }
 
             if (nsp && nsp.get()) {
-                _assign(msg, {
+                assign(msg, {
                     level,
                     "meta": meta,
                     "operation-name": nsp.get().operation,
@@ -197,7 +198,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
                     "invocation-id": nsp.get().invocationId,
                 });
             } else {
-                _assign(msg, {
+                assign(msg, {
                     level,
                     meta,
                 });
@@ -214,10 +215,9 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
     }
 }
 
-export interface LogzioOptions {
-
-    token: string;
-    environmentId: string;
-    applicationId: string;
-
+if (process.env.LOGZIO_TOKEN) {
+    const options: LogzioOptions = {
+        token: process.env.LOGZIO_TOKEN,
+    };
+    configuration.listeners.push(new LogzioAutomationEventListener(options));
 }

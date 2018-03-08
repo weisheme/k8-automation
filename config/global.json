@@ -1,0 +1,5 @@
+{
+  "environment": "ri",
+  "groups": ["all"],
+  "policy": "durable"
+}

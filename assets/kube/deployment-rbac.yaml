@@ -26,14 +26,14 @@ spec:
       serviceAccountName: k8-automation-serviceaccount
       containers:
       - name: k8-automation
-        image: atomist/k8-automation:0.5.0
+        image: atomist/k8-automation:0.5.3
         imagePullPolicy: IfNotPresent
         env:
-        - name: ATOMIST_TEAM
+        - name: ATOMIST_TEAMS
           valueFrom:
             secretKeyRef:
               name: automation-config
-              key: teamId
+              key: teamIds
         - name: GITHUB_TOKEN
           valueFrom:
             secretKeyRef:

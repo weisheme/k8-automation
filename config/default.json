@@ -1,19 +1,12 @@
 {
+  "application": "k8-automation",
   "endpoints": {
-    "api":"https://automation-staging.atomist.services/registration",
-    "graphql": "https://automation-staging.atomist.services/graphql/team"
+    "api": "https://automation.atomist.com/registration",
+    "graphql": "https://automation.atomist.com/graphql/team"
   },
+  "environment": "local",
   "groups": null,
-  "teamIds": "T1L0VDKJP",
-  "policy": null,
-  "http": {
-    "auth": {
-      "basic": {
-        "enabled": false
-      },
-      "bearer": {
-        "enabled": true
-      }
-    }
-  }
+  "policy": "ephemeral",
+  "teamIds": null,
+  "token": null
 }
