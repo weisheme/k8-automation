@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.3...HEAD
 
+### Changed
+
+-   Updated to new automation-client configuration
+
+### Fixed
+
+-   Logzio configuration
+
 ## [0.5.3][] - 2018-03-05
 
 [0.5.3]: https://github.com/atomist/k8-automation/compare/0.5.2...0.5.3

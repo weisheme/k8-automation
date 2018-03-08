@@ -21,24 +21,19 @@ spec:
         owner: atomist
         version: "0"
       annotations:
-        atomist.com/repo-image: '[{"container":"k8-automation","repo":{"owner":"atomist","name":"k8-automation"},"image":"atomist/k8-automation"}]'
+        atomist.com/repo-image: '[{"container":"k8-automation","repo":{"owner":"atomist","name":"k8-automation"},"image":"atomist/k8-automation","strategy":"tag-semver"}]'
     spec:
       serviceAccountName: k8-automation-serviceaccount
       containers:
       - name: k8-automation
-        image: atomist/k8-automation:0.5.0
+        image: atomist/k8-automation:0.6.0
         imagePullPolicy: IfNotPresent
         env:
-        - name: ATOMIST_TEAM
+        - name: ATOMIST_CONFIG
           valueFrom:
             secretKeyRef:
-              name: automation-config
-              key: teamId
-        - name: GITHUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: automation-config
-              key: githubToken
+              name: automation
+              key: config
         ports:
         - name: http
           containerPort: 2866

@@ -19,6 +19,7 @@ import * as assert from "power-assert";
 
 import {
     deploymentTemplate,
+    endpointBaseUrl,
     Ingress,
     ingressPatch,
     ingressRemove,
@@ -121,6 +122,21 @@ describe("k8", () => {
 
     });
 
+    describe("endpointBaseUrl", () => {
+
+        it("should return the default", () => {
+            const req = {
+                teamId: "murray",
+                env: "beverly",
+                owner: "barry",
+                repo: "adam",
+            };
+            const u = endpointBaseUrl(req);
+            const e = "http://localhost/murray/beverly/barry/adam/";
+            assert(u === e);
+        });
+    });
+
     describe("ingressTemplate", () => {
 
         it("should create an ingress spec", () => {
@@ -150,7 +166,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -240,7 +256,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -311,7 +327,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -363,7 +379,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
