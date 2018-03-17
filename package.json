@@ -18,7 +18,7 @@
     "kubernetes"
   ],
   "dependencies": {
-    "@atomist/automation-client": "https://atomist.jfrog.io/atomist/npm-dev/@atomist/automation-client/-/@atomist/automation-client-0.7.0-20180316222031.tgz",
+    "@atomist/automation-client": "https://atomist.jfrog.io/atomist/npm-dev/@atomist/automation-client/-/@atomist/automation-client-0.8.0-20180317223222.tgz",
     "@google-cloud/storage": "^1.5.2",
     "@octokit/rest": "^14.0.9",
     "app-root-path": "^2.0.1",
