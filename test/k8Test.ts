@@ -166,7 +166,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -256,7 +256,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -327,7 +327,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [
@@ -379,7 +379,7 @@ describe("k8", () => {
                         ingress: "nginx",
                         teamId: "T7GMF5USG",
                     },
-                    name: "atm-gke-ri",
+                    name: "atm-ingress",
                 },
                 spec: {
                     rules: [

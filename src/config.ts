@@ -46,5 +46,5 @@ const defaultHostUrl: string = "http://localhost";
  * the ingress path to create the base service endpoint URL.
  */
 export function hostUrl(): string {
-    getCustomConfig(automationConfiguration(), "hostUrl", defaultHostUrl);
+    return getCustomConfig(automationConfiguration(), "hostUrl", defaultHostUrl);
 }
