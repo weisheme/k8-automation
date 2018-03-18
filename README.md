@@ -118,7 +118,7 @@ token][ghpat] with `read:org` and `repo` scopes.
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
 $ kubectl create secret --namespace=k8-automation generic automation \
-    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"http://IP"}}'
+    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"https://IP"}}'
 ```
 
 In the above commands, replace `TEAM_ID` with your Atomist team ID,
