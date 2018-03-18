@@ -30,8 +30,10 @@ export function getCustomConfig<T = any>(cfg: Configuration, keyPath: string, de
     return _.get(cfg, `custom.${keyPath}`, defaultValue);
 }
 
-const automationConfiguration: Configuration = (runningAutomationClient && runningAutomationClient.configuration) ?
-    runningAutomationClient.configuration : {};
+function automationConfiguration(): Configuration {
+    return (runningAutomationClient && runningAutomationClient.configuration) ?
+        runningAutomationClient.configuration : {};
+}
 
 /**
  * Default value for hostUlr if the custom.hostUrl configuration is
@@ -43,4 +45,6 @@ const defaultHostUrl: string = "http://localhost";
  * Configuration value of custom.hostUrl.  This will be prepended to
  * the ingress path to create the base service endpoint URL.
  */
-export const hostUrl = getCustomConfig(automationConfiguration, "hostUrl", defaultHostUrl);
+export function hostUrl(): string {
+    getCustomConfig(automationConfiguration(), "hostUrl", defaultHostUrl);
+}

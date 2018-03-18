@@ -754,7 +754,7 @@ export function serviceTemplate(req: ServiceTemplateRequest): Service {
     return s;
 }
 
-const ingressName = "atm-gke-ri";
+const ingressName = "atm-ingress";
 
 export type IngressRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "env">;
 
@@ -775,7 +775,7 @@ export function ingressPath(req: IngressRequest): string {
  * @return ingress path for deployment service
  */
 export function endpointBaseUrl(req: IngressRequest): string {
-    return `${hostUrl}${ingressPath(req)}/`;
+    return `${hostUrl()}${ingressPath(req)}/`;
 }
 
 /**
