@@ -24,4 +24,4 @@ CMD ["node_modules/@atomist/automation-client/start.client.js"]
 
 COPY . .
 
-RUN npm install
+RUN npm install --only=production
