@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]: https://github.com/atomist/k8-automation/compare/0.5.3...HEAD
 
+### Added
+
+-   `imagePullSecret` and `namespace` custom configuration
+
 ### Changed
 
 -   Updated to new automation-client configuration

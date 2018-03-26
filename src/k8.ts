@@ -22,7 +22,7 @@ import * as path from "path";
 import promiseRetry = require("promise-retry");
 
 import { webhookBaseUrl } from "./atomistWebhook";
-import { hostUrl } from "./config";
+import { automationConfiguration, getCustomConfig, hostUrl } from "./config";
 import { preErrMsg, reduceResults } from "./error";
 
 /**
@@ -64,13 +64,16 @@ function cleanName(name: string): string {
 export type NamespaceRequest = Pick<DeploymentRequest, "teamId" | "env">;
 
 /**
- * Generated kubernetes namespace for a deployment.
+ * Return namespace for Kubernetes resources.  If custom.namespace
+ * configuration value exists, it is returned.  If not, a namespace is
+ * generated from the Atomist team ID and environment.
  *
  * @param req namespace request object
  * @return kubernetes namespace to create resource in
  */
 function getNamespace(req: NamespaceRequest): string {
-    return cleanName(`${req.teamId}${joinString}${req.env}`);
+    const ns: string = getCustomConfig(automationConfiguration(), "namespace");
+    return ns || cleanName(`${req.teamId}${joinString}${req.env}`);
 }
 
 export type NameRequest = Pick<DeploymentRequest, "owner" | "repo">;
@@ -346,6 +349,10 @@ export type RestartPolicy = "Always" | "OnFailure" | "Never";
 
 export type DNSPolicy = "ClusterFirstWithHostNet" | "ClusterFirst" | "Default" | "None";
 
+export interface LocalObjectReference {
+    name?: string;
+}
+
 export interface PodSpec {
     initContainers?: Container[];
     containers: Container[];
@@ -356,6 +363,7 @@ export interface PodSpec {
     nodeSelector?: { [key: string]: string };
     serviceAccountName?: string;
     automountServiceAccountToken?: boolean;
+    imagePullSecrets?: LocalObjectReference[];
 }
 
 export interface PodTemplate {
@@ -604,6 +612,8 @@ export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
             image: baseImage,
         },
     ]);
+    const imagePullSecret: string = getCustomConfig(automationConfiguration(), "imagePullSecret");
+    const imagePullSecrets: LocalObjectReference[] = (imagePullSecret) ? [{ name: imagePullSecret }] : [];
     const d: Deployment = {
         apiVersion: "extensions/v1beta1",
         kind: "Deployment",
@@ -697,6 +707,7 @@ export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
                     ],
                     dnsPolicy: "ClusterFirst",
                     restartPolicy: "Always",
+                    imagePullSecrets,
                 },
             },
             strategy: {

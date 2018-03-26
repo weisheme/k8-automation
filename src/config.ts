@@ -30,7 +30,7 @@ export function getCustomConfig<T = any>(cfg: Configuration, keyPath: string, de
     return _.get(cfg, `custom.${keyPath}`, defaultValue);
 }
 
-function automationConfiguration(): Configuration {
+export function automationConfiguration(): Configuration {
     return (runningAutomationClient && runningAutomationClient.configuration) ?
         runningAutomationClient.configuration : {};
 }

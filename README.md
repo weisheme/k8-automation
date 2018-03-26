@@ -118,13 +118,19 @@ token][ghpat] with `read:org` and `repo` scopes.
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
 $ kubectl create secret --namespace=k8-automation generic automation \
-    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"https://IP"}}'
+    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"https://IP","namespace":"NS","imagePullSecret":"SECRET_NAME"}}'
 ```
 
 In the above commands, replace `TEAM_ID` with your Atomist team ID,
 `TOKEN` with your GitHub token, and `IP` with the IP address of your
 ingress controller.  For minikube, you can get this from the `minikube
-ip` command.
+ip` command.  You can optionally provide the `namespace` to deploy to.
+If it is not specified, one is programmatically generated using the
+Atomist team ID and the deployment environment name.  If your Docker
+registry requires authentication, you can create your image pull
+secret in Kubernetes and supply its name as the value of the
+`imagePullSecret` custom configuration key.  If pulling your images
+does not require authentication, you can omit this configuration key.
 
 [kube]: ./assets/kube/ (k8-automation Kubernetes Resources)
 [rbac]: https://kubernetes.io/docs/admin/authorization/rbac/ (Kubernetes RBAC)
