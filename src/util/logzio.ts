@@ -1,10 +1,10 @@
 import {
+    Configuration,
     EventFired,
     HandlerContext,
     HandlerResult,
     logger,
 } from "@atomist/automation-client";
-import { runningAutomationClient } from "@atomist/automation-client/automationClient";
 import { CommandInvocation } from "@atomist/automation-client/internal/invoker/Payload";
 import {
     CommandIncoming,
@@ -17,6 +17,7 @@ import {
 } from "@atomist/automation-client/server/AutomationEventListener";
 import { Destination, MessageOptions } from "@atomist/automation-client/spi/message/MessageClient";
 
+import * as _ from "lodash";
 import assign = require("lodash.assign");
 import { createLogger } from "logzio-nodejs";
 import * as serializeError from "serialize-error";
@@ -24,6 +25,10 @@ import logzioWinstonTransport = require("winston-logzio");
 
 export interface LogzioOptions {
     token: string;
+    name: string;
+    version: string;
+    environment: string;
+    application: string;
 }
 
 export class LogzioAutomationEventListener extends AutomationEventListenerSupport
@@ -161,11 +166,11 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
             protocol: "https",
             bufferSize: 10,
             extraFields: {
-                "service": runningAutomationClient.configuration.name,
-                "artifact": runningAutomationClient.configuration.name,
-                "version": runningAutomationClient.configuration.version,
-                "environment": runningAutomationClient.configuration.environment,
-                "application-id": runningAutomationClient.configuration.application,
+                "service": options.name,
+                "artifact": options.name,
+                "version": options.version,
+                "environment": options.environment,
+                "application-id": options.application,
                 "process-id": process.pid,
             },
         };
@@ -214,9 +219,19 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
     }
 }
 
-if (process.env.LOGZIO_TOKEN) {
-    const options: LogzioOptions = {
-        token: process.env.LOGZIO_TOKEN,
-    };
-    runningAutomationClient.configuration.listeners.push(new LogzioAutomationEventListener(options));
+/**
+ * Configure logzio logging if token exists in configuration.
+ */
+export function configureLogzio(configuration: Configuration): Promise<Configuration> {
+    if (_.get(configuration, "logging.custom.logzio.token")) {
+        const options: LogzioOptions = {
+            token: configuration.logging.custom.logzio.token,
+            name: configuration.name,
+            version: configuration.version,
+            environment: configuration.environment,
+            application: configuration.application,
+        };
+        configuration.listeners.push(new LogzioAutomationEventListener(options));
+    }
+    return Promise.resolve(configuration);
 }
