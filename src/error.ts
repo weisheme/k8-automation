@@ -31,7 +31,7 @@ export function preErrMsg(e: Error, prefix: string): Error {
 /**
  * Combine HandlerResults into a single HandlerResult.  Each
  * HandlerResult.code is summed into the final, single value and
- * messages are concatenated, separate by a semicolon (;).
+ * messages are concatenated, separated by a semicolon (;).
  *
  * @param results array of HandlerResults
  * @return single, combined result

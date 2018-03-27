@@ -207,7 +207,7 @@ export function checkAndBuild(req: ContainerBuildAuthRequest & GitHubAuth): Prom
         .then(eligible => {
             if (!eligible) {
                 const msg = `project ${buildStr} does not meet GCB eligibility`;
-                logger.debug(msg);
+                logger.info(msg);
                 return { code: 0, message: msg };
             }
             return gcBuild(req)

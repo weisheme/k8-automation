@@ -139,7 +139,7 @@ does not require authentication, you can omit this configuration key.
 
 ### RBAC
 
-If your Kubernetes cluster uses RBAC, you can deploy with the
+If your Kubernetes cluster uses RBAC (minikube does), you can deploy with the
 following commands
 
 ```console
