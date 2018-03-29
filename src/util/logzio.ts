@@ -18,8 +18,8 @@ import {
 import { Destination, MessageOptions } from "@atomist/automation-client/spi/message/MessageClient";
 
 import * as _ from "lodash";
-import assign = require("lodash.assign");
 import { createLogger } from "logzio-nodejs";
+import * as os from "os";
 import * as serializeError from "serialize-error";
 import logzioWinstonTransport = require("winston-logzio");
 
@@ -172,6 +172,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
                 "environment": options.environment,
                 "application-id": options.application,
                 "process-id": process.pid,
+                "host": os.hostname(),
             },
         };
         // create the logzio event logger
@@ -190,7 +191,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
             }
 
             if (nsp && nsp.get()) {
-                assign(msg, {
+                _.assign(msg, {
                     level,
                     "meta": meta,
                     "operation-name": nsp.get().operation,
@@ -202,7 +203,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
                     "invocation-id": nsp.get().invocationId,
                 });
             } else {
-                assign(msg, {
+                _.assign(msg, {
                     level,
                     meta,
                 });
@@ -224,6 +225,7 @@ export class LogzioAutomationEventListener extends AutomationEventListenerSuppor
  */
 export function configureLogzio(configuration: Configuration): Promise<Configuration> {
     if (_.get(configuration, "logging.custom.logzio.token")) {
+        logger.debug(`adding logzio listener`);
         const options: LogzioOptions = {
             token: configuration.logging.custom.logzio.token,
             name: configuration.name,
