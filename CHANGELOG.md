@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.6.1...HEAD
+
+## [0.6.1][] - 2018-03-30
+
+[0.6.1]: https://github.com/atomist/k8-automation/compare/0.6.0...0.6.1
+
+Logzio release
+
+### Changed
+
+-   Added hostname to logzio metadata
+-   Moved logzio token config to custom from logging.custom
 
 ## [0.6.0][] - 2018-03-28
 
