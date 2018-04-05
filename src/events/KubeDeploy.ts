@@ -67,6 +67,7 @@ export class KubeDeploy implements HandleEvent<KubeDeploySub.Subscription> {
             const depName = `${teamId}:${env}:${owner}:${repo}:${sha}`;
             logger.debug(`deploying ${depName}`);
 
+            logger.debug(`using token '${this.githubToken.replace(/^(...).*(..)$/, "$1...$2")}'`);
             const github = new Github();
             try {
                 github.authenticate({
