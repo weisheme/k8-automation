@@ -26,7 +26,7 @@ spec:
       serviceAccountName: k8-automation-serviceaccount
       containers:
       - name: k8-automation
-        image: atomist/k8-automation:0.6.1
+        image: atomist/k8-automation:0.6.2
         imagePullPolicy: IfNotPresent
         env:
         - name: ATOMIST_CONFIG
