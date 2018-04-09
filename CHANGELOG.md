@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.6.3...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.0...HEAD
+
+## [0.7.0][] - 2018-04-18
+
+[0.7.0]: https://github.com/atomist/k8-automation/compare/0.6.3...0.7.0
+
+SDM release
+
+### Changed
+
+-   **BREAKING** Migrate from GitHub commit statuses to SDM goals [#12][12]
+-   **BREAKING** Convert KubeUndeploy to a command handler
+-   **BREAKING** Custom configuration is now obtained from the SDM
+    goal, not the automation configuration
+
+### Removed
+
+-   **BREAKING** Support for Google Container Builder
+
+### Fixed
+
+-   Always check for existing resources [#8][8]
+-   Always update goal [#9][9]
+-   Support deploying arbitrary containers [#10][10]
+-   Use hostname in ingress rule [#11][11]
+
+[8]: https://github.com/atomist/k8-automation/issues/8
+[9]: https://github.com/atomist/k8-automation/issues/9
+[10]: https://github.com/atomist/k8-automation/issues/10
+[11]: https://github.com/atomist/k8-automation/issues/11
+[12]: https://github.com/atomist/k8-automation/issues/12
 
 ## [0.6.3][] - 2018-04-05
 
