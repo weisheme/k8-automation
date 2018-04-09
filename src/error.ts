@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import { HandlerResult, Success } from "@atomist/automation-client";
-
 /**
  * Prepend message to (e: Error).message.
  *
@@ -26,21 +24,4 @@ import { HandlerResult, Success } from "@atomist/automation-client";
 export function preErrMsg(e: Error, prefix: string): Error {
     e.message = `${prefix}: ${e.message}`;
     return e;
-}
-
-/**
- * Combine HandlerResults into a single HandlerResult.  Each
- * HandlerResult.code is summed into the final, single value and
- * messages are concatenated, separated by a semicolon (;).
- *
- * @param results array of HandlerResults
- * @return single, combined result
- */
-export function reduceResults(results: HandlerResult[]): HandlerResult {
-    return results.reduce((acc, cur) => {
-        return {
-            code: acc.code + cur.code,
-            message: (cur.message) ? ((acc.message) ? `${acc.message}; ${cur.message}` : cur.message) : acc.message,
-        };
-    }, Success);
 }
