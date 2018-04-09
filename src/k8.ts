@@ -14,181 +14,175 @@
  * limitations under the License.
  */
 
-import { HandlerResult, logger } from "@atomist/automation-client";
+import {
+    HandlerResult,
+    logger,
+    Success,
+} from "@atomist/automation-client";
 import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
+import * as _ from "lodash";
 import * as path from "path";
 import promiseRetry = require("promise-retry");
 
-import { webhookBaseUrl } from "./atomistWebhook";
-import { automationConfiguration, getCustomConfig, hostUrl } from "./config";
-import { preErrMsg, reduceResults } from "./error";
+import { preErrMsg } from "./error";
 
 /**
- * Information needed to create, update, or delete a deployment
- * in/from a kubernetes cluster.
+ * Kubernetes configuration to use to create API clients.
  */
-export interface DeploymentRequest {
+export interface KubeConfig {
+    /** Kubernetes cluster or client configuration */
+    config: k8.ClusterConfiguration | k8.ClientConfiguration;
+}
+
+/**
+ * Kubernetes API clients used to create/update/delete an application.
+ */
+export interface KubeClients {
     /** Kubernetes Core client */
     core: k8.ApiGroup;
     /** Kubernetes Extension client */
     ext: k8.ApiGroup;
-    /** owner of repository */
-    owner: string;
-    /** name of repository, used as deployment/service name */
-    repo: string;
+}
+
+/**
+ * Information needed to construct resources required for creating or
+ * updating an application in a Kubernetes cluster.
+ */
+export interface KubeApplication {
     /** Atomist team ID */
     teamId: string;
-    /** image tag for deployment pod template container */
-    image: string;
-    /** deployment environment, e.g., "production" or "testing" */
+    /** Arbitrary name of environment */
     env: string;
-}
-
-const joinString = "-0-";
-
-/**
- * Kubernetes has rules about what can be in a name, specifically they
- * must conform to this regular expression
- * /[a-z]([-a-z0-9]*[a-z0-9])?/.  This enforces conformance.  Any
- * modification like this may result in name collisions.
- *
- * @param name name to clean
- * @return cleaned name
- */
-function cleanName(name: string): string {
-    return "r" + name.toLocaleLowerCase().replace(/[^a-z0-9\-]+/g, joinString) + "9";
-}
-
-export type NamespaceRequest = Pick<DeploymentRequest, "teamId" | "env">;
-
-/**
- * Return namespace for Kubernetes resources.  If custom.namespace
- * configuration value exists, it is returned.  If not, a namespace is
- * generated from the Atomist team ID and environment.
- *
- * @param req namespace request object
- * @return kubernetes namespace to create resource in
- */
-function getNamespace(req: NamespaceRequest): string {
-    const ns: string = getCustomConfig(automationConfiguration(), "namespace");
-    return ns || cleanName(`${req.teamId}${joinString}${req.env}`);
-}
-
-export type NameRequest = Pick<DeploymentRequest, "owner" | "repo">;
-
-/**
- * Generate resource name for a deployment.
- *
- * @param req deployment request object
- * @return resource name
- */
-function resourceName(req: NameRequest): string {
-    return cleanName(`${req.owner}${joinString}${req.repo}`);
-}
-
-/**
- * Information needed to upsert a deployment in a kubernetes cluster.
- */
-export interface UpsertDeploymentRequest {
-    /** Kubernetes cluster or client configuration */
-    config: k8.ClusterConfiguration | k8.ClientConfiguration;
-    /** owner of repository */
-    owner: string;
-    /** name of repository, used as deployment/service name */
-    repo: string;
-    /** Atomist team ID */
-    teamId: string;
-    /** image tag for deployment pod template container */
+    /** Name of resources to create */
+    name: string;
+    /** Namespace to create resources in */
+    ns: string;
+    /** Full image tag for deployment pod template container */
     image: string;
-    /** deployment environment, e.g., "production" or "testing" */
-    env: string;
+    /**
+     * Name of image pull secret for container image, if not provided
+     * no image pull secret is provided in the pod spec.
+     */
+    imagePullSecret?: string;
+    /**
+     * Port the service listens on, if not provided no service
+     * resource is created.
+     */
+    port?: number;
+    /**
+     * Ingress rule URL path, if not provided no ingress rule is
+     * added.
+     */
+    path?: string;
+    /**
+     * Ingress rule hostname, if not provided none is used in the
+     * ingress rule, meaning it will apply to the wildcard host, and
+     * "localhost" is used when constructing the service endpoint URL.
+     */
+    host?: string;
+    /** Ingress protocol, "http" or "https", default is "http" */
+    protocol?: "http" | "https";
+    /**
+     * Stringified patch of a deployment spec for this application
+     * that is parsed and overlaid on top of the default deployment
+     * spec template.
+     */
+    deploymentSpec?: string;
+    /**
+     * Stringified patch of a service spec for this application that
+     * is parsed and overlaid on top of the default service spec
+     * template.
+     */
+    serviceSpec?: string;
 }
 
 /**
- * Create or update a deployment.
- *
- * @param config a kubernetes ClusterConfiguration or ClientConfiguration
- * @param owner repository owner, i.e., organization or user
- * @param repo repository name, used as name of deployment/service
- * @param teamId Atomist team ID
- * @param image full Docker tag of image, i.e., [REPO/]OWNER/NAME:TAG
- * @param env deployment environment, e.g., "production" or "testing"
- * @return Promise
+ * Information needed to delete resources related to an application in
+ * a Kubernetes cluster.
  */
-export function upsertDeployment(
-    config: k8.ClusterConfiguration | k8.ClientConfiguration,
-    owner: string,
-    repo: string,
-    teamId: string,
-    image: string,
-    env: string = "production",
-): Promise<void> {
+export type KubeDelete = Pick<KubeApplication, "name" | "ns" | "path" | "host">;
 
-    const core = new k8.Core(config);
-    const ext = new k8.Extensions(config);
-    const req: DeploymentRequest = { core, ext, owner, repo, teamId, image, env };
-    const ns = getNamespace(req);
-    const name = resourceName(req);
+/**
+ * Information needed to create an application in a Kubernetes
+ * cluster.
+ */
+export type KubeApplicationRequest = KubeConfig & KubeApplication;
 
-    return ext.namespaces(ns).deployments(name).get()
-        .then(dep => {
-            logger.debug(`updating deployment ${ns}/${name} using ${image}`);
-            return updateDeployment(ext, dep, image);
-        }, e => {
-            logger.debug(`failed to get ${ns}/${name} deployment, creating using ${image}: ${e.message}`);
-            return createDeployment(req);
-        })
-        .catch(e => Promise.reject(preErrMsg(e, `upserting ${ns}/${name} using ${image} failed`)));
+/**
+ * Information needed to delete an application from a Kubernetes
+ * cluster.
+ */
+export type KubeDeleteRequest = KubeConfig & KubeDelete;
+
+/**
+ * Internal application structure used to create or update resources
+ * in a Kubernetes cluster.
+ */
+type KubeResourceRequest = KubeClients & KubeApplication;
+
+/**
+ * Internal application structure used to delete resources from a
+ * Kubernetes cluster.
+ */
+type KubeDeleteResourceRequest = KubeClients & KubeDelete;
+
+function reqFilter<T>(k: string, v: T): T {
+    if (k === "config" || k === "core" || k === "ext") {
+        return undefined;
+    }
+    return v;
 }
 
 /**
- * Delete a deployment, its service, and ingress rules from a
- * kubernetes cluster.
+ * Create or update all the resources for an application in a
+ * Kubernetes cluster if it does not exist.  If it does exist, update
+ * the image in the deployment resource.
  *
- * @param req delete deployment request object
+ * @param req application creation request
  */
-export function deleteDeployment(
-    config: k8.ClusterConfiguration | k8.ClientConfiguration,
-    owner: string,
-    repo: string,
-    teamId: string,
-    env: string = "production",
-): Promise<void> {
-    const core = new k8.Core(config);
-    const ext = new k8.Extensions(config);
-    const req = { core, ext, owner, repo, teamId, env };
-    const name = resourceName(req);
-    const ns = getNamespace(req);
-    const depStr = stringify({ owner, repo, teamId, env });
-    const updateIngress: Promise<HandlerResult> = ext.namespaces(ns).ingresses(ingressName).get()
-        .then((ing: Ingress) => {
-            const patch: Partial<Ingress> = ingressRemove(ing, req);
-            if (patch.spec.rules[0].http.paths.length < 1) {
-                return retryP(() => ext.namespaces(ns).ingresses(ingressName).delete({}), `delete ingress ${depStr}`);
+export async function upsertApplication(upReq: KubeApplicationRequest): Promise<void> {
+
+    const core = new k8.Core(upReq.config);
+    const ext = new k8.Extensions(upReq.config);
+    const req = { ...upReq, core, ext };
+    const reqStr = stringify(req, reqFilter);
+
+    return upsertNamespace(req)
+        .then(() => upsertService(req))
+        .then(() => upsertDeployment(req))
+        .then(() => upsertIngress(req))
+        .catch(e => Promise.reject(preErrMsg(e, `upserting '${reqStr}' failed`)));
+}
+
+/**
+ * Delete an application from a kubernetes cluster.  If any resource
+ * requested to be deleted does not exist, it is logged but no error
+ * is returned.
+ *
+ * @param req delete application request object
+ */
+export async function deleteApplication(delReq: KubeDeleteRequest): Promise<void> {
+    const core = new k8.Core(delReq.config);
+    const ext = new k8.Extensions(delReq.config);
+    const req = { ...delReq, core, ext };
+    const reqStr = stringify(req, reqFilter);
+    const slug = `${req.ns}/${req.name}`;
+
+    const errs: Error[] = [];
+    return deleteIngress(req)
+        .catch(e => errs.push(preErrMsg(e, `failed to remove rule for ${slug} from ingress`)))
+        .then(() => deleteService(req))
+        .catch(e => errs.push(preErrMsg(e, `failed to delete service ${slug}`)))
+        .then(() => deleteDeployment(req))
+        .catch(e => errs.push(preErrMsg(e, `failed to delete deployment ${slug}`)))
+        .then(() => {
+            if (errs.length > 0) {
+                const msg = `Failed to delete application '${reqStr}': ${errs.map(e => e.message).join("; ")}`;
+                logger.error(msg);
+                return Promise.reject(new Error(msg));
             }
-            return retryP(() => ext.namespaces(ns).ingresses(ingressName).patch({ body: patch }),
-                "remove path from ingress");
-        }, e => logger.debug(`no ingress found for '${depStr}': ${e.message}`))
-        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
-    const rmService: Promise<HandlerResult> = core.namespaces(ns).services(name).get()
-        .then((svc: Service) => retryP(() => core.namespaces(ns).services(name).delete({}), `delete service ${depStr}`),
-            e => logger.debug(`no service found for '${depStr}': ${e.message}`))
-        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
-    const rmDeployment: Promise<HandlerResult> = ext.namespaces(ns).deployments(name).get()
-        .then((dep: Deployment) => retryP(
-            () => ext.namespaces(ns).deployments(name).delete({ body: { propagationPolicy: "Background" } }),
-            `delete deployment ${depStr}`),
-            e => logger.debug(`no deployment found for '${depStr}': ${e.message}`))
-        .then(() => ({ code: 0 }), e => ({ code: 1, message: e.message }));
-    return Promise.all([updateIngress, rmService, rmDeployment])
-        .then(results => {
-            const acc = reduceResults(results);
-            if (acc.code > 0) {
-                return Promise.reject(new Error(`failed to delete some resources of '${depStr}': ${acc.message}`));
-            }
-            return;
         });
 }
 
@@ -520,74 +514,210 @@ export interface Ingress {
 }
 
 /**
- * Update the image of the first container in a deployment pod template.
+ * Create or update a namespace.
  *
- * @param ext Kubernetes extension API client
- * @param dep current deployment spec
- * @param image new image tagname
- * @return updated deployment spec
+ * @param req Kuberenetes application request
  */
-function updateDeployment(ext: k8.ApiGroup, dep: Deployment, image: string): Promise<any> {
-    const name = dep.metadata.name;
-    const ns = dep.metadata.namespace;
-    const depStr = `${ns}/${name}:${image}`;
-    const patch: Partial<Deployment> = { spec: { template: { spec: { containers: [{ name, image }] } } } };
-    return retryP(() => ext.namespaces(ns).deployments(name).patch({ body: patch }), `patch deployment ${depStr}`);
+async function upsertNamespace(req: KubeResourceRequest): Promise<void> {
+    return req.core.namespaces(req.ns).get()
+        .then(() => logger.debug(`Namespace ${req.ns} exists`), e => {
+            logger.debug(`Failed to get namespace ${req.ns}, creating: ${e.message}`);
+            const ns: Namespace = namespaceTemplate(req);
+            return retryP(() => req.core.namespaces.post({ body: ns }), `Create namespace ${req.ns}`);
+        });
 }
 
 /**
- * Create a deployment from a standard spec template.
+ * Create a service if it does not exist.  If req.port is false, no
+ * service is created.
  *
- * @param req deployment request
- * @return created deployment spec
+ * @param req Kuberenetes application request
  */
-function createDeployment(req: DeploymentRequest): Promise<any> {
-    const name = resourceName(req);
-    const space: Namespace = namespaceTemplate(req);
-    const ns = space.metadata.name;
-    const svc: Service = serviceTemplate(req);
-    const dep: Deployment = deploymentTemplate(req);
-    const depStr = `${ns}/${name}`;
-    return req.core.namespaces(ns).get()
-        .catch(e => {
-            logger.debug(`failed to get namespace ${ns}, creating it: ${e.message}`);
-            return retryP(() => req.core.namespaces.post({ body: space }), `create namespace ${ns}`);
-        })
-        .then(() => retryP(() => req.core.namespaces(ns).services.post({ body: svc }), `create service ${depStr}`))
-        .then(() => retryP(() => req.ext.namespaces(ns).deployments.post({ body: dep }), `create deployment ${depStr}`))
-        .then(() => req.ext.namespaces(ns).ingresses(ingressName).get())
-        .then((ing: Ingress) => {
-            const patch: Partial<Ingress> = ingressPatch(ing, req);
-            return retryP(() => req.ext.namespaces(ns).ingresses(ingressName).patch({ body: patch }),
-                `patch ingress for ${depStr}`);
-        }, e => {
-            logger.debug(`failed to get ingress in namespace ${ns}, creating: ${e.message}`);
-            const ing = ingressTemplate(req);
-            return retryP(() => req.ext.namespaces(ns).ingresses.post({ body: ing }), `create ingress for ${depStr}`);
+async function upsertService(req: KubeResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    if (!req.port) {
+        logger.debug(`Port not provided, will not create service ${slug}`);
+        return Promise.resolve();
+    }
+    return req.core.namespaces(req.ns).services(req.name).get()
+        .then(() => logger.debug(`Service ${slug} exists`), e => {
+            logger.debug(`Failed to get service ${slug}, creating: ${e.message}`);
+            let svc: Service;
+            try {
+                svc = serviceTemplate(req);
+            } catch (e) {
+                logger.error(e.message);
+                return Promise.reject(e);
+            }
+            return retryP(() => req.core.namespaces(req.ns).services.post({ body: svc }), `create service ${slug}`);
         });
+}
+
+/**
+ * Create or updated a deployment.
+ *
+ * @param req Kuberenetes application request
+ */
+async function upsertDeployment(req: KubeResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    return req.ext.namespaces(req.ns).deployments(req.name).get()
+        .then(dep => {
+            logger.debug(`Updating deployment ${slug} using ${req.image}`);
+            const patch: Partial<Deployment> = {
+                spec: {
+                    template: {
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                },
+                            ],
+                        },
+                    },
+                },
+            };
+            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
+                `patch deployment ${slug}`);
+        }, e => {
+            logger.debug(`Failed to get deployment ${slug}, creating: ${e.message}`);
+            let dep: Deployment;
+            try {
+                dep = deploymentTemplate(req);
+            } catch (e) {
+                logger.error(e.message);
+                return Promise.reject(e);
+            }
+            return retryP(() => req.ext.namespaces(req.ns).deployments.post({ body: dep }),
+                `create deployment ${slug}`);
+        });
+}
+
+/**
+ * Create or updated an ingress with the appropriate rule for an
+ * application.
+ *
+ * @param req Kuberenetes resource request
+ */
+async function upsertIngress(req: KubeResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    if (!req.path) {
+        logger.debug(`Path not provided, will not upsert ingress ${slug}`);
+        return Promise.resolve();
+    }
+    return req.ext.namespaces(req.ns).ingresses(ingressName).get()
+        .then((ing: Ingress) => {
+            logger.debug(`Updating ingress ${ingressName} for ${slug}`);
+            let patch: Partial<Ingress>;
+            try {
+                patch = ingressPatch(ing, req);
+            } catch (e) {
+                logger.error(e.message);
+                return Promise.reject(e);
+            }
+            if (!patch) {
+                logger.debug(`Ingress ${ingressName} does not need updating for ${slug}: ${stringify(ing)}`);
+                return Promise.resolve();
+            }
+            return retryP(() => req.ext.namespaces(req.ns).ingresses(ingressName).patch({ body: patch }),
+                `patch ingress ${req.ns}/${ingressName} for ${slug}`);
+        }, e => {
+            logger.debug(`Failed to get ingress ${req.ns}/${ingressName}, creating: ${e.message}`);
+            const ing = ingressTemplate(req);
+            return retryP(() => req.ext.namespaces(req.ns).ingresses.post({ body: ing }),
+                `create ingress ${req.ns}/${ingressName} for ${slug}`);
+        });
+}
+
+/**
+ * Delete a service if it exists.  If the resource does not exist, do
+ * nothing.
+ *
+ * @param req Kuberenetes delete request
+ */
+async function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    return req.core.namespaces(req.ns).services(req.name).get()
+        .then(() => {
+            return retryP(() => req.core.namespaces(req.ns).services(req.name).delete({}), `delete service ${slug}`);
+        }, e => logger.debug(`Service ${slug} does not exist: ${e.message}`));
+}
+
+/**
+ * Delete a deployment if it exists.  If the resource does not exist,
+ * do nothing.
+ *
+ * @param req Kuberenetes delete request
+ */
+async function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    return req.ext.namespaces(req.ns).deployments(req.name).get()
+        .then(() => {
+            const body = { propagationPolicy: "Background" };
+            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).delete({ body }),
+                `delete deployment ${slug}`);
+        }, e => logger.debug(`Deployment ${slug} does not exist: ${e.message}`));
+}
+
+/**
+ * Delete a rule from an ingress if it exists.  If the rule does not
+ * exist, do nothing.  If it is the last rule to be deleted, the
+ * ingress is deleted.
+ *
+ * @param req Kuberenetes delete request
+ */
+async function deleteIngress(req: KubeDeleteResourceRequest): Promise<void> {
+    const slug = `${req.ns}/${req.name}`;
+    if (!req.path) {
+        logger.debug(`No path provided for ${slug}, cannot delete ingress rule`);
+        return;
+    }
+    return retryP(() => req.ext.namespaces(req.ns).ingresses(ingressName).get(), "get ingress")
+        .then((ing: Ingress) => {
+            let patch: Partial<Ingress>;
+            try {
+                patch = ingressRemove(ing, req);
+            } catch (e) {
+                logger.error(e.message);
+                return Promise.reject(e);
+            }
+            if (patch === undefined) {
+                logger.debug(`No changes to ingress necessary for ${slug}`);
+                return;
+            } else if (patch === {}) {
+                logger.debug(`Last rule removed from ingress ${req.ns}/${ingressName}, deleting ingress`);
+                return retryP(() => req.ext.namespaces(req.ns).ingresses(ingressName).delete({}),
+                    "delete ingress");
+            }
+            return retryP(() => req.ext.namespaces(req.ns).ingresses(ingressName).patch({ body: patch }),
+                "remove path from ingress");
+        }, e => logger.debug(`Ingress ${req.ns}/${ingressName} does not exist: ${e.message}`));
 }
 
 const creator = `atomist.k8-automation`;
 
+function smartMerge<T, U>(objValue: T, srcValue: U): U {
+    if (_.isArray(srcValue)) {
+        return srcValue;
+    }
+}
+
 /**
  * Create namespace resource.
  *
- * @param req namespace request
+ * @param req Kubernetes application
  * @return kubernetes namespace resource
  */
-export function namespaceTemplate(req: NamespaceRequest): Namespace {
-    const name = getNamespace(req);
+export function namespaceTemplate(req: KubeApplication): Namespace {
     const ns: Namespace = {
         apiVersion: "v1",
         kind: "Namespace",
         metadata: {
-            name,
+            name: req.ns,
         },
     };
     return ns;
 }
-
-export type DeploymentTemplateRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "image" | "env">;
 
 /**
  * Create deployment for a repo and image.
@@ -595,34 +725,47 @@ export type DeploymentTemplateRequest = Pick<DeploymentRequest, "owner" | "repo"
  * @param req deployment template request
  * @return deployment resource
  */
-export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
-    const name = resourceName(req);
-    const baseImage = req.image.split(":")[0];
+export function deploymentTemplate(req: KubeApplication): Deployment {
     const k8ventAnnot = stringify({
         environment: req.env,
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
-    const repoImageAnnot = stringify([
-        {
-            container: name,
-            repo: {
-                owner: req.owner,
-                name: req.repo,
+    const imagePullSecrets: LocalObjectReference[] = (req.imagePullSecret) ? [{ name: req.imagePullSecret }] : [];
+    let ports: ContainerPort[];
+    let readinessProbe: Probe;
+    let livenessProbe: Probe;
+    if (req.port) {
+        ports = [
+            {
+                name: "http",
+                containerPort: req.port,
+                protocol: "TCP",
             },
-            image: baseImage,
-        },
-    ]);
-    const imagePullSecret: string = getCustomConfig(automationConfiguration(), "imagePullSecret");
-    const imagePullSecrets: LocalObjectReference[] = (imagePullSecret) ? [{ name: imagePullSecret }] : [];
+        ];
+        const probe: Probe = {
+            httpGet: {
+                path: "/",
+                port: "http",
+                scheme: "HTTP",
+            },
+            initialDelaySeconds: 30,
+            timeoutSeconds: 3,
+            periodSeconds: 10,
+            successThreshold: 1,
+            failureThreshold: 3,
+        };
+        readinessProbe = probe;
+        livenessProbe = probe;
+    }
     const d: Deployment = {
         apiVersion: "extensions/v1beta1",
         kind: "Deployment",
         metadata: {
-            name,
+            name: req.name,
             labels: {
-                app: req.repo,
-                owner: req.owner,
+                app: req.name,
                 teamId: req.teamId,
+                env: req.env,
                 creator,
             },
         },
@@ -631,32 +774,34 @@ export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
             revisionHistoryLimit: 3,
             selector: {
                 matchLabels: {
-                    app: req.repo,
-                    owner: req.owner,
+                    app: req.name,
                     teamId: req.teamId,
                 },
             },
             template: {
                 metadata: {
-                    name,
+                    name: req.name,
                     labels: {
-                        app: req.repo,
-                        owner: req.owner,
+                        app: req.name,
                         teamId: req.teamId,
+                        env: req.env,
                         creator,
                     },
                     annotations: {
                         "atomist.com/k8vent": k8ventAnnot,
-                        "atomist.com/repo-image": repoImageAnnot,
                     },
                 },
                 spec: {
                     containers: [
                         {
-                            name,
+                            name: req.name,
                             image: req.image,
                             imagePullPolicy: "IfNotPresent",
                             env: [
+                                {
+                                    name: "ATOMIST_TEAMS",
+                                    value: req.teamId,
+                                },
                                 {
                                     name: "ATOMIST_ENVIRONMENT",
                                     value: req.env,
@@ -672,37 +817,9 @@ export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
                                     memory: "320Mi",
                                 },
                             },
-                            readinessProbe: {
-                                httpGet: {
-                                    path: "/info",
-                                    port: "http",
-                                    scheme: "HTTP",
-                                },
-                                initialDelaySeconds: 30,
-                                timeoutSeconds: 3,
-                                periodSeconds: 10,
-                                successThreshold: 1,
-                                failureThreshold: 6,
-                            },
-                            livenessProbe: {
-                                httpGet: {
-                                    path: "/health",
-                                    port: "http",
-                                    scheme: "HTTP",
-                                },
-                                initialDelaySeconds: 30,
-                                timeoutSeconds: 3,
-                                periodSeconds: 10,
-                                successThreshold: 1,
-                                failureThreshold: 6,
-                            },
-                            ports: [
-                                {
-                                    name: "http",
-                                    containerPort: 8080,
-                                    protocol: "TCP",
-                                },
-                            ],
+                            readinessProbe,
+                            livenessProbe,
+                            ports,
                         },
                     ],
                     dnsPolicy: "ClusterFirst",
@@ -719,10 +836,16 @@ export function deploymentTemplate(req: DeploymentTemplateRequest): Deployment {
             },
         },
     };
+    if (req.deploymentSpec) {
+        try {
+            const depSpec: Partial<Deployment> = JSON.parse(req.deploymentSpec);
+            _.mergeWith(d, depSpec, smartMerge);
+        } catch (e) {
+            throw new Error(`Failed to parse provided deployment spec as JSON: ${e.message}`);
+        }
+    }
     return d;
 }
-
-export type ServiceTemplateRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId">;
 
 /**
  * Create service to front a deployment for a repo and image.
@@ -730,17 +853,16 @@ export type ServiceTemplateRequest = Pick<DeploymentRequest, "owner" | "repo" | 
  * @param req service template request
  * @return service resource
  */
-export function serviceTemplate(req: ServiceTemplateRequest): Service {
-    const name = resourceName(req);
+export function serviceTemplate(req: KubeApplication): Service {
     const s: Service = {
         kind: "Service",
         apiVersion: "v1",
         metadata: {
-            name,
+            name: req.name,
             labels: {
-                service: req.repo,
-                owner: req.owner,
+                app: req.name,
                 teamId: req.teamId,
+                env: req.env,
                 creator,
             },
         },
@@ -749,44 +871,42 @@ export function serviceTemplate(req: ServiceTemplateRequest): Service {
                 {
                     name: "http",
                     protocol: "TCP",
-                    port: 8080,
+                    port: req.port,
                     targetPort: "http",
                 },
             ],
             selector: {
-                app: req.repo,
-                owner: req.owner,
+                app: req.name,
                 teamId: req.teamId,
             },
             sessionAffinity: "None",
             type: "NodePort",
         },
     };
+    if (req.serviceSpec) {
+        try {
+            const svcSpec: Partial<Service> = JSON.parse(req.serviceSpec);
+            _.mergeWith(s, svcSpec, smartMerge);
+        } catch (e) {
+            throw new Error(`Failed to parse provided service spec as JSON: ${e.message}`);
+        }
+    }
     return s;
 }
 
 const ingressName = "atm-ingress";
 
-export type IngressRequest = Pick<DeploymentRequest, "owner" | "repo" | "teamId" | "env">;
-
-/**
- * Create the ingress path for a deployment.
- *
- * @param req ingress request
- * @return ingress path for deployment service
- */
-export function ingressPath(req: IngressRequest): string {
-    return `/${req.teamId}/${req.env}/${req.owner}/${req.repo}`;
-}
-
 /**
  * Create the URL for a deployment.
  *
  * @param req ingress request
- * @return ingress path for deployment service
+ * @return endpoint URL for deployment service
  */
-export function endpointBaseUrl(req: IngressRequest): string {
-    return `${hostUrl()}${ingressPath(req)}/`;
+export function endpointBaseUrl(req: KubeApplication): string {
+    const protocol = (req.protocol) ? req.protocol : "http";
+    const host = (req.host) ? req.host : "localhost";
+    const tail = (req.path) ? `${req.path}/` : "/";
+    return `${protocol}://${host}${tail}`;
 }
 
 /**
@@ -795,14 +915,12 @@ export function endpointBaseUrl(req: IngressRequest): string {
  * @param req ingress request
  * @return ingress patch
  */
-function httpIngressPath(req: IngressRequest): HTTPIngressPath {
-    const name = resourceName(req);
-    const inPath = ingressPath(req);
+function httpIngressPath(req: KubeApplication): HTTPIngressPath {
     const httpPath: HTTPIngressPath = {
-        path: inPath,
+        path: req.path,
         backend: {
-            serviceName: name,
-            servicePort: 8080,
+            serviceName: req.name,
+            servicePort: "http",
         },
     };
     return httpPath;
@@ -814,8 +932,16 @@ function httpIngressPath(req: IngressRequest): HTTPIngressPath {
  * @param req ingress request
  * @return service resource for ingress to use
  */
-export function ingressTemplate(req: IngressRequest): Ingress {
+export function ingressTemplate(req: KubeApplication): Ingress {
     const httpPath: HTTPIngressPath = httpIngressPath(req);
+    const rule: IngressRule = {
+        http: {
+            paths: [httpPath],
+        },
+    };
+    if (req.host) {
+        rule.host = req.host;
+    }
     const i: Ingress = {
         kind: "Ingress",
         apiVersion: "extensions/v1beta1",
@@ -824,11 +950,6 @@ export function ingressTemplate(req: IngressRequest): Ingress {
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/",
-                "nginx.ingress.kubernetes.io/limit-connections": "5",
-                "nginx.ingress.kubernetes.io/limit-rps": "5",
-                "nginx.ingress.kubernetes.io/limit-rpm": "50",
-                "nginx.ingress.kubernetes.io/limit-rate": "50k",
-                "nginx.ingress.kubernetes.io/limit-rate-after": "100k",
             },
             labels: {
                 ingress: "nginx",
@@ -838,95 +959,124 @@ export function ingressTemplate(req: IngressRequest): Ingress {
             },
         },
         spec: {
-            rules: [
-                {
-                    http: {
-                        paths: [httpPath],
-                    },
-                },
-            ],
+            rules: [rule],
         },
     };
     return i;
 }
 
 /**
- * Create a patch to add a new path to the ingress rules.
+ * Create a patch to add a new path to the ingress rules.  If there is
+ * already a rule for the path/backend/host, it returns undefined.
  *
  * @param ing ingress resource to create patch for
  * @param req ingress request
- * @return ingress patch
+ * @return ingress patch or undefined if no need to patch
  */
-export function ingressPatch(ing: Ingress, req: IngressRequest): Partial<Ingress> {
+export function ingressPatch(ing: Ingress, req: KubeApplication): Partial<Ingress> {
     const httpPath: HTTPIngressPath = httpIngressPath(req);
-    const rules = ing.spec.rules;
-    const paths = (rules && rules.length > 0) ? [...ing.spec.rules[0].http.paths, httpPath] : [httpPath];
-    const patch: Partial<Ingress> = {
-        spec: {
-            rules: [
-                {
-                    http: {
-                        paths,
-                    },
-                },
-            ],
-        },
-    };
+    const rules = (ing && ing.spec && ing.spec.rules) ? ing.spec.rules : [];
+    const ruleIndex = (req.host) ? rules.findIndex(r => r.host === req.host) : rules.findIndex(r => !r.host);
+    if (ruleIndex < 0) {
+        const rule: IngressRule = {
+            http: {
+                paths: [httpPath],
+            },
+        };
+        if (req.host) {
+            rule.host = req.host;
+        }
+        rules.push(rule);
+    } else {
+        const rule = rules[ruleIndex];
+        const paths = (rule && rule.http && rule.http.paths) ? rule.http.paths : [];
+        const existingPath = paths.find(p => p.path === req.path);
+        if (existingPath) {
+            if (existingPath.backend.serviceName !== req.name) {
+                throw new Error(`Cannot use path '${req.path}' for service ${req.ns}/${req.name}, it is already ` +
+                    `in use by ${existingPath.backend.serviceName}`);
+            }
+            logger.debug(`Rule with path '${req.path}' and service ${req.ns}/${req.name} already exists`);
+            return undefined;
+        }
+        paths.push(httpPath);
+        rule.http.paths = paths;
+        rules[ruleIndex] = rule;
+    }
+    const patch: Partial<Ingress> = { spec: { rules } };
     return patch;
 }
 
 /**
- * Create a patch to remove a path from the ingress rules.
+ * Create a patch to remove a path from the ingress rules.  If the
+ * path does not exist, undefined is returned.  If the ingress has no
+ * rules after removing this rule, an empty patch object is returned.
  *
  * @param ing ingress resource to create patch for
  * @param req ingress request
- * @return ingress patch that removes the path
+ * @return ingress patch that removes the path, or undefined if nothing needs done.
  */
-export function ingressRemove(ing: Ingress, req: IngressRequest): Partial<Ingress> {
-    const rules = ing.spec.rules;
-    if (!rules || rules.length < 1) {
-        logger.debug(`requested to remove path from ingress with no rules: ${stringify(ing)}`);
+export function ingressRemove(ing: Ingress, req: KubeDelete): Partial<Ingress> {
+    if (!ing || !ing.spec || !ing.spec.rules || ing.spec.rules.length < 1) {
         return undefined;
     }
-    const iPath = ingressPath(req);
-    const paths = rules[0].http.paths.filter(p => p.path !== iPath);
-    const patch: Partial<Ingress> = {
-        spec: {
-            rules: [
-                {
-                    http: {
-                        paths,
-                    },
-                },
-            ],
-        },
-    };
+    const rules = ing.spec.rules;
+    const ruleIndex = (req.host) ? rules.findIndex(r => r.host === req.host) : rules.findIndex(r => !r.host);
+    if (ruleIndex < 0) {
+        return undefined;
+    }
+    const rule = rules[ruleIndex];
+    const paths = rule.http.paths;
+    const pathIndex = paths.findIndex(p => p.path === req.path);
+    if (pathIndex < 0) {
+        return undefined;
+    }
+    const existingPath = paths[pathIndex];
+    if (existingPath.backend.serviceName !== req.name) {
+        throw new Error(`Will not remove path '${req.path}' for service ${req.ns}/${req.name}, it is associated ` +
+            `with service ${existingPath.backend.serviceName}`);
+    }
+    rules[ruleIndex].http.paths.splice(pathIndex, 1);
+    if (rules[ruleIndex].http.paths.length < 1) {
+        rules.splice(ruleIndex, 1);
+        if (rules.length < 1) {
+            return {};
+        }
+    }
+    const patch: Partial<Ingress> = { spec: { rules } };
     return patch;
 }
 
 const defaultRetryOptions = {
-    retries: 10,
+    retries: 5,
     factor: 2,
-    minTimeout: 1 * 100,
-    maxTimeout: 5 * 1000,
+    minTimeout: 0.1 * 1000,
+    maxTimeout: 3 * 1000,
     randomize: true,
 };
 
 /**
- * Retry kube API call.
+ * Retry Kube API call.
  */
-function retryP<T>(
+async function retryP<T>(
     k: () => Promise<T>,
     desc: string,
     options = defaultRetryOptions,
 ): Promise<T> {
 
     return promiseRetry(defaultRetryOptions, (retry, count) => {
-        logger.debug(`${desc} attempt ${count}`);
+        logger.debug(`Retry ${desc} attempt ${count}`);
         return k().catch(e => {
-            logger.debug(`error ${desc} attempt ${count}: ${e.message}`);
+            logger.debug(`Error ${desc} attempt ${count}: ${e.message}`);
             retry(e);
         });
     })
-        .catch(e => Promise.reject(preErrMsg(e, `failed to ${desc}`)));
+        .catch(e => Promise.reject(preErrMsg(e, `Failed to ${desc}`)));
+}
+
+/**
+ * Scheme and hostname (authority) of the Atomist webhook URL.
+ */
+export function webhookBaseUrl(): string {
+    return process.env.ATOMIST_WEBHOOK_BASEURL || "https://webhook.atomist.com";
 }

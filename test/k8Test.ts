@@ -24,56 +24,201 @@ import {
     ingressPatch,
     ingressRemove,
     ingressTemplate,
+    KubeApplication,
     serviceTemplate,
 } from "../src/k8";
+
+import { logger, LoggingConfig } from "@atomist/automation-client/internal/util/logger";
+LoggingConfig.format = "cli";
+(logger as any).level = process.env.LOG_LEVEL || "info";
 
 describe("k8", () => {
 
     describe("deploymentTemplate", () => {
 
         it("should create a deployment spec", () => {
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
-                // tslint:disable-next-line:max-line-length
-                image: "gcr.io/reference-implementation-1/atomist-playground/losgatos1:b213603ea477ec4680508608ef9b58ff7b57637d",
-                env: "testing",
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                imagePullSecret: "comfort",
+                port: 5510,
             };
-            const name = "ratomist-playground-0-losgatos19";
             const d = deploymentTemplate(req);
             assert(d.kind === "Deployment");
-            assert(d.metadata.name === name);
-            assert(d.metadata.labels.app === req.repo);
-            assert(d.metadata.labels.owner === req.owner);
+            assert(d.metadata.name === req.name);
+            assert(d.metadata.labels.app === req.name);
             assert(d.metadata.labels.teamId === req.teamId);
             assert(d.spec.replicas === 1);
             assert(d.spec.revisionHistoryLimit === 3);
-            assert(d.spec.selector.matchLabels.app === req.repo);
-            assert(d.spec.selector.matchLabels.owner === req.owner);
+            assert(d.spec.selector.matchLabels.app === req.name);
             assert(d.spec.selector.matchLabels.teamId === req.teamId);
             assert(d.spec.template.metadata.annotations["atomist.com/k8vent"] ===
-                // tslint:disable-next-line:max-line-length
-                "{\"environment\":\"testing\",\"webhooks\":[\"https://webhook.atomist.com/atomist/kube/teams/T7GMF5USG\"]}");
-            assert(d.spec.template.metadata.annotations["atomist.com/repo-image"] ===
-                // tslint:disable-next-line:max-line-length
-                "[{\"container\":\"ratomist-playground-0-losgatos19\",\"repo\":{\"owner\":\"atomist-playground\",\"name\":\"losgatos1\"},\"image\":\"gcr.io/reference-implementation-1/atomist-playground/losgatos1\"}]");
-            assert(d.spec.template.metadata.labels.app === req.repo);
-            assert(d.spec.template.metadata.labels.owner === req.owner);
+                `{"environment":"new-wave","webhooks":["https://webhook.atomist.com/atomist/kube/teams/KAT3BU5H"]}`);
+            assert(d.spec.template.metadata.labels.app === req.name);
             assert(d.spec.template.metadata.labels.teamId === req.teamId);
-            assert(d.spec.template.metadata.name === name);
+            assert(d.spec.template.metadata.name === req.name);
             assert(d.spec.template.spec.containers.length === 1);
-            assert(d.spec.template.spec.containers[0].name === name);
+            assert(d.spec.template.spec.containers[0].name === req.name);
             assert(d.spec.template.spec.containers[0].image === req.image);
-            assert(d.spec.template.spec.containers[0].env.length === 1);
-            assert(d.spec.template.spec.containers[0].env[0].name === "ATOMIST_ENVIRONMENT");
-            assert(d.spec.template.spec.containers[0].env[0].value === "testing");
+            assert(d.spec.template.spec.containers[0].env.length === 2);
+            assert(d.spec.template.spec.containers[0].env[0].name === "ATOMIST_TEAMS");
+            assert(d.spec.template.spec.containers[0].env[0].value === req.teamId);
+            assert(d.spec.template.spec.containers[0].env[1].name === "ATOMIST_ENVIRONMENT");
+            assert(d.spec.template.spec.containers[0].env[1].value === req.env);
             assert(d.spec.template.spec.containers[0].ports.length === 1);
             assert(d.spec.template.spec.containers[0].ports[0].name === "http");
-            assert(d.spec.template.spec.containers[0].ports[0].containerPort === 8080);
+            assert(d.spec.template.spec.containers[0].ports[0].containerPort === req.port);
             assert(d.spec.template.spec.containers[0].ports[0].protocol === "TCP");
+            assert(d.spec.template.spec.containers[0].readinessProbe.httpGet.path === "/");
+            assert(d.spec.template.spec.containers[0].readinessProbe.httpGet.port === "http");
+            assert(d.spec.template.spec.containers[0].readinessProbe.httpGet.scheme === "HTTP");
+            assert(d.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds === 30);
+            assert(d.spec.template.spec.containers[0].readinessProbe.timeoutSeconds === 3);
+            assert(d.spec.template.spec.containers[0].readinessProbe.periodSeconds === 10);
+            assert(d.spec.template.spec.containers[0].readinessProbe.successThreshold === 1);
+            assert(d.spec.template.spec.containers[0].readinessProbe.failureThreshold === 3);
+            assert(d.spec.template.spec.containers[0].livenessProbe.httpGet.path === "/");
+            assert(d.spec.template.spec.containers[0].livenessProbe.httpGet.port === "http");
+            assert(d.spec.template.spec.containers[0].livenessProbe.httpGet.scheme === "HTTP");
+            assert(d.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds === 30);
+            assert(d.spec.template.spec.containers[0].livenessProbe.timeoutSeconds === 3);
+            assert(d.spec.template.spec.containers[0].livenessProbe.periodSeconds === 10);
+            assert(d.spec.template.spec.containers[0].livenessProbe.successThreshold === 1);
+            assert(d.spec.template.spec.containers[0].livenessProbe.failureThreshold === 3);
             assert(d.spec.template.spec.dnsPolicy === "ClusterFirst");
             assert(d.spec.template.spec.restartPolicy === "Always");
+            assert(d.spec.template.spec.imagePullSecrets[0].name === req.imagePullSecret);
+        });
+
+        it("should create a custom deployment spec", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                imagePullSecret: "comfort",
+                port: 5510,
+                deploymentSpec:
+                    `{"spec":{"revisionHistoryLimit":5,"template":{"spec":{"dnsPolicy":"ClusterFirstWithHostNet"}}}}`,
+            };
+            const d = deploymentTemplate(req);
+            const e = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Deployment",
+                metadata: {
+                    name: req.name,
+                    labels: {
+                        app: req.name,
+                        teamId: req.teamId,
+                        env: req.env,
+                        creator: "atomist.k8-automation",
+                    },
+                },
+                spec: {
+                    replicas: 1,
+                    revisionHistoryLimit: 5,
+                    selector: {
+                        matchLabels: {
+                            app: req.name,
+                            teamId: req.teamId,
+                        },
+                    },
+                    template: {
+                        metadata: {
+                            name: req.name,
+                            labels: {
+                                app: req.name,
+                                teamId: req.teamId,
+                                env: req.env,
+                                creator: "atomist.k8-automation",
+                            },
+                            annotations: {
+                                // tslint:disable-next-line:max-line-length
+                                "atomist.com/k8vent": `{"environment":"${req.env}","webhooks":["https://webhook.atomist.com/atomist/kube/teams/${req.teamId}"]}`,
+                            },
+                        },
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                    imagePullPolicy: "IfNotPresent",
+                                    env: [
+                                        {
+                                            name: "ATOMIST_TEAMS",
+                                            value: req.teamId,
+                                        },
+                                        {
+                                            name: "ATOMIST_ENVIRONMENT",
+                                            value: req.env,
+                                        },
+                                    ],
+                                    resources: {
+                                        limits: {
+                                            cpu: "300m",
+                                            memory: "384Mi",
+                                        },
+                                        requests: {
+                                            cpu: "100m",
+                                            memory: "320Mi",
+                                        },
+                                    },
+                                    readinessProbe: {
+                                        httpGet: {
+                                            path: "/",
+                                            port: "http",
+                                            scheme: "HTTP",
+                                        },
+                                        initialDelaySeconds: 30,
+                                        timeoutSeconds: 3,
+                                        periodSeconds: 10,
+                                        successThreshold: 1,
+                                        failureThreshold: 3,
+                                    },
+                                    livenessProbe: {
+                                        httpGet: {
+                                            path: "/",
+                                            port: "http",
+                                            scheme: "HTTP",
+                                        },
+                                        initialDelaySeconds: 30,
+                                        timeoutSeconds: 3,
+                                        periodSeconds: 10,
+                                        successThreshold: 1,
+                                        failureThreshold: 3,
+                                    },
+                                    ports: [
+                                        {
+                                            name: "http",
+                                            containerPort: req.port,
+                                            protocol: "TCP",
+                                        },
+                                    ],
+                                },
+                            ],
+                            dnsPolicy: "ClusterFirstWithHostNet",
+                            restartPolicy: "Always",
+                            imagePullSecrets: [
+                                {
+                                    name: req.imagePullSecret,
+                                },
+                            ],
+                        },
+                    },
+                    strategy: {
+                        type: "RollingUpdate",
+                        rollingUpdate: {
+                            maxUnavailable: 0,
+                            maxSurge: 1,
+                        },
+                    },
+                },
+            };
+            assert.deepStrictEqual(d, e);
         });
 
     });
@@ -81,10 +226,13 @@ describe("k8", () => {
     describe("serviceTemplate", () => {
 
         it("should create a service spec", () => {
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
             };
             const s = serviceTemplate(req);
             const e = {
@@ -93,25 +241,24 @@ describe("k8", () => {
                 metadata: {
                     labels: {
                         creator: "atomist.k8-automation",
-                        owner: "atomist-playground",
-                        service: "losgatos1",
-                        teamId: "T7GMF5USG",
+                        app: req.name,
+                        env: req.env,
+                        teamId: req.teamId,
                     },
-                    name: "ratomist-playground-0-losgatos19",
+                    name: req.name,
                 },
                 spec: {
                     ports: [
                         {
                             name: "http",
-                            port: 8080,
+                            port: 5510,
                             protocol: "TCP",
                             targetPort: "http",
                         },
                     ],
                     selector: {
-                        app: "losgatos1",
-                        owner: "atomist-playground",
-                        teamId: "T7GMF5USG",
+                        app: req.name,
+                        teamId: req.teamId,
                     },
                     sessionAffinity: "None",
                     type: "NodePort",
@@ -125,26 +272,49 @@ describe("k8", () => {
     describe("endpointBaseUrl", () => {
 
         it("should return the default", () => {
-            const req = {
-                teamId: "murray",
-                env: "beverly",
-                owner: "barry",
-                repo: "adam",
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
             };
             const u = endpointBaseUrl(req);
-            const e = "http://localhost/murray/beverly/barry/adam/";
+            const e = "http://localhost/";
             assert(u === e);
         });
+
+        it("should return the host and path", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+                protocol: "https" as "https", // strange but necessary
+            };
+            const u = endpointBaseUrl(req);
+            const e = `https://emi.com/bush/kate/hounds-of-love/cloudbusting/`;
+            assert(u === e);
+        });
+
     });
 
     describe("ingressTemplate", () => {
 
-        it("should create an ingress spec", () => {
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
-                env: "testing",
+        it("should create a wildcard ingress spec", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
             };
             const i = ingressTemplate(req);
             const e = {
@@ -154,17 +324,12 @@ describe("k8", () => {
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
-                        "nginx.ingress.kubernetes.io/limit-connections": "5",
-                        "nginx.ingress.kubernetes.io/limit-rps": "5",
-                        "nginx.ingress.kubernetes.io/limit-rpm": "50",
-                        "nginx.ingress.kubernetes.io/limit-rate": "50k",
-                        "nginx.ingress.kubernetes.io/limit-rate-after": "100k",
                     },
                     labels: {
-                        creator: "atomist.k8-automation",
-                        env: "testing",
                         ingress: "nginx",
-                        teamId: "T7GMF5USG",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
                 },
@@ -175,10 +340,60 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-losgatos19",
-                                            servicePort: 8080,
+                                            serviceName: req.name,
+                                            servicePort: "http",
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                        path: req.path,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(i, e);
+        });
+
+        it("should create a host ingress spec", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i = ingressTemplate(req);
+            const e = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        ingress: "nginx",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
+                    },
+                    name: "atm-ingress",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: req.host,
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: req.name,
+                                            servicePort: "http",
+                                        },
+                                        path: req.path,
                                     },
                                 ],
                             },
@@ -194,18 +409,24 @@ describe("k8", () => {
     describe("ingressPatch", () => {
 
         it("should create an ingress patch", () => {
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
-                env: "testing",
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
             };
             const i = ingressTemplate(req);
-            const pReq = {
-                owner: "atomist-playground",
-                repo: "thunder-cats",
-                teamId: "T7GMF5USG",
-                env: "testing",
+            const pReq: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "and-dream-of-sheep",
+                image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
+                port: 6245,
+                path: "/kate-bush/dream-of-sheep",
             };
             const ip = ingressPatch(i, pReq);
             const e = {
@@ -216,17 +437,17 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-losgatos19",
-                                            servicePort: 8080,
+                                            serviceName: req.name,
+                                            servicePort: "http",
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                        path: req.path,
                                     },
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-thunder-cats9",
-                                            servicePort: 8080,
+                                            serviceName: pReq.name,
+                                            servicePort: "http",
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                        path: pReq.path,
                                     },
                                 ],
                             },
@@ -237,11 +458,154 @@ describe("k8", () => {
             assert.deepStrictEqual(ip, e);
         });
 
+        it("should add a host rule", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+            };
+            const i = ingressTemplate(req);
+            const pReq: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "and-dream-of-sheep",
+                image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
+                port: 6245,
+                path: "/kate-bush/dream-of-sheep",
+                host: "emi.com",
+            };
+            const ip = ingressPatch(i, pReq);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: req.name,
+                                            servicePort: "http",
+                                        },
+                                        path: req.path,
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            host: pReq.host,
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: pReq.name,
+                                            servicePort: "http",
+                                        },
+                                        path: pReq.path,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
+        });
+
+        it("should add to host rule", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i = ingressTemplate(req);
+            const pReq: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "and-dream-of-sheep",
+                image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
+                port: 6245,
+                path: "/kate-bush/dream-of-sheep",
+                host: "emi.com",
+            };
+            const ip = ingressPatch(i, pReq);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            host: req.host,
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: req.name,
+                                            servicePort: "http",
+                                        },
+                                        path: req.path,
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: pReq.name,
+                                            servicePort: "http",
+                                        },
+                                        path: pReq.path,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
+        });
+
+        it("should throw an error if two services try to use same path", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+            };
+            const i = ingressTemplate(req);
+            const pReq: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "and-dream-of-sheep",
+                image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
+                port: 6245,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+            };
+            assert.throws(() => ingressPatch(i, pReq), /Cannot use path/);
+        });
+
     });
 
     describe("ingressRemove", () => {
 
         it("should create an ingress patch", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+            };
             const i: Ingress = {
                 apiVersion: "extensions/v1beta1",
                 kind: "Ingress",
@@ -251,10 +615,9 @@ describe("k8", () => {
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
                     },
                     labels: {
-                        creator: "atomist.k8-automation",
-                        env: "testing",
                         ingress: "nginx",
-                        teamId: "T7GMF5USG",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
                     },
                     name: "atm-ingress",
                 },
@@ -265,29 +628,23 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-losgatos19",
-                                            servicePort: 8080,
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                        path: "/kate-bush/dream-of-sheep",
                                     },
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-thunder-cats9",
-                                            servicePort: 8080,
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
                                     },
                                 ],
                             },
                         },
                     ],
                 },
-            };
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
-                env: "testing",
             };
             const ip = ingressRemove(i, req);
             const e = {
@@ -298,10 +655,86 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-thunder-cats9",
-                                            servicePort: 8080,
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
+        });
+
+        it("should create an ingress patch for a host", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        ingress: "nginx",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                    },
+                    name: "atm-ingress",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            const ip = ingressRemove(i, req);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
                                     },
                                 ],
                             },
@@ -313,6 +746,15 @@ describe("k8", () => {
         });
 
         it("should not do anything if there is no match", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+            };
             const i: Ingress = {
                 apiVersion: "extensions/v1beta1",
                 kind: "Ingress",
@@ -322,10 +764,10 @@ describe("k8", () => {
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
                     },
                     labels: {
-                        creator: "atomist.k8-automation",
-                        env: "testing",
                         ingress: "nginx",
-                        teamId: "T7GMF5USG",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
                 },
@@ -336,17 +778,17 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-losgatos19",
-                                            servicePort: 8080,
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                        path: "/kate-bush/dream-of-sheep",
                                     },
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-thunder-cats9",
-                                            servicePort: 8080,
+                                            serviceName: "under-ice",
+                                            servicePort: 7221,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/thunder-cats",
+                                        path: "/kate_bush-hounds_of_love/underIce",
                                     },
                                 ],
                             },
@@ -354,17 +796,21 @@ describe("k8", () => {
                     ],
                 },
             };
-            const req = {
-                owner: "atomist-playground",
-                repo: "le-tigre",
-                teamId: "T7GMF5USG",
-                env: "testing",
-            };
             const ip = ingressRemove(i, req);
-            assert.deepStrictEqual(ip, { spec: i.spec });
+            assert(ip === undefined);
         });
 
-        it("should remove the only path", () => {
+        it("should remove the host-specific rule", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
             const i: Ingress = {
                 apiVersion: "extensions/v1beta1",
                 kind: "Ingress",
@@ -374,10 +820,10 @@ describe("k8", () => {
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
                     },
                     labels: {
-                        creator: "atomist.k8-automation",
-                        env: "testing",
                         ingress: "nginx",
-                        teamId: "T7GMF5USG",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
                 },
@@ -388,10 +834,38 @@ describe("k8", () => {
                                 paths: [
                                     {
                                         backend: {
-                                            serviceName: "ratomist-playground-0-losgatos19",
-                                            servicePort: 8080,
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
                                         },
-                                        path: "/T7GMF5USG/testing/atomist-playground/losgatos1",
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
                                     },
                                 ],
                             },
@@ -399,15 +873,229 @@ describe("k8", () => {
                     ],
                 },
             };
-            const req = {
-                owner: "atomist-playground",
-                repo: "losgatos1",
-                teamId: "T7GMF5USG",
-                env: "testing",
+            const ip = ingressRemove(i, req);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
+        });
+
+        it("should remove the host entry", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        ingress: "nginx",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
+                    },
+                    name: "atm-ingress",
+                },
+                spec: {
+                    rules: [
+                        {
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
             };
             const ip = ingressRemove(i, req);
-            const e: Partial<Ingress> = { spec: { rules: [{ http: { paths: [] } }] } };
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/kate-bush/dream-of-sheep",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
             assert.deepStrictEqual(ip, e);
+        });
+
+        it("should remove the only path and return an empty object", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        ingress: "nginx",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
+                    },
+                    name: "atm-ingress",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "cloudbusting",
+                                            servicePort: 5510,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            const ip = ingressRemove(i, req);
+            assert.deepStrictEqual(ip, {});
+        });
+
+        it("should refuse to remove the path of another service", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                env: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "emi.com",
+            };
+            const i: Ingress = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Ingress",
+                metadata: {
+                    annotations: {
+                        "kubernetes.io/ingress.class": "nginx",
+                        "nginx.ingress.kubernetes.io/rewrite-target": "/",
+                    },
+                    labels: {
+                        ingress: "nginx",
+                        teamId: "KAT3BU5H",
+                        env: "new-wave",
+                        creator: "atomist.k8-automation",
+                    },
+                    name: "atm-ingress",
+                },
+                spec: {
+                    rules: [
+                        {
+                            host: "emi.com",
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: "and-dream-of-sheep",
+                                            servicePort: 6245,
+                                        },
+                                        path: "/bush/kate/hounds-of-love/cloudbusting",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            };
+            assert.throws(() => ingressRemove(i, req), /Will not remove path/);
         });
 
     });
