@@ -66,14 +66,14 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                     const eligible = eligibleDeployGoal(sdmGoal, commit);
                     if (eligible !== Success) {
                         logger.info(`SDM goal is not eligible for Kubernetes deploy: ${eligible.message}`);
-                        return SuccessPromise;
+                        return Success;
                     }
 
                     const repo = g.repo.name;
                     const owner = g.repo.owner;
                     const sha = g.sha;
                     const teamId = ctx.teamId;
-                    const env = g.environment;
+                    const env = runningAutomationClient.configuration.environment;
                     const depName = `${teamId}:${env}:${owner}:${repo}:${sha}`;
                     if (!commit.image) {
                         const msg = `Kubernetes deploy requested for ${depName} but that commit ` +
@@ -125,12 +125,16 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                         return failGoal(ctx, sdmGoal, msg);
                     }
                     kubeApp.ns = kubeApp.ns || "default";
+                    if (kubeApp.environment !== env) {
+                        logger.info(`SDM goal data kuberenetes environment '${kubeApp.environment}' is this ` +
+                            `environment '${env}'`);
+                        return Success;
+                    }
 
                     const upsertReq: KubeApplicationRequest = {
                         ...kubeApp,
                         config: k8Config,
                         teamId,
-                        env: sdmGoal.environment,
                         image,
                     };
                     try {
@@ -175,10 +179,6 @@ export function eligibleDeployGoal(goal: SdmGoal, commit: CommitForSdmGoal): Han
     const atmMethod = "side-effect";
     if (goal.fulfillment.method !== atmMethod) {
         return { code: 1, message: `SDM goal fulfillment method '${goal.fulfillment.method}' is not '${atmMethod}` };
-    }
-    const atmEnv = runningAutomationClient.configuration.environment;
-    if (goal.environment !== atmEnv) {
-        return { code: 1, message: `SDM goal environment '${goal.environment}' is not '${atmEnv}'` };
     }
     if (goal.state !== "requested") {
         return { code: 1, message: `SDM goal state '${goal.state}' is not 'requested'` };

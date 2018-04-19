@@ -54,7 +54,7 @@ export interface KubeApplication {
     /** Atomist team ID */
     teamId: string;
     /** Arbitrary name of environment */
-    env: string;
+    environment: string;
     /** Name of resources to create */
     name: string;
     /** Namespace to create resources in */
@@ -727,7 +727,7 @@ export function namespaceTemplate(req: KubeApplication): Namespace {
  */
 export function deploymentTemplate(req: KubeApplication): Deployment {
     const k8ventAnnot = stringify({
-        environment: req.env,
+        environment: req.environment,
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
     const imagePullSecrets: LocalObjectReference[] = (req.imagePullSecret) ? [{ name: req.imagePullSecret }] : [];
@@ -765,7 +765,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
             labels: {
                 app: req.name,
                 teamId: req.teamId,
-                env: req.env,
+                env: req.environment,
                 creator,
             },
         },
@@ -784,7 +784,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
                     labels: {
                         app: req.name,
                         teamId: req.teamId,
-                        env: req.env,
+                        env: req.environment,
                         creator,
                     },
                     annotations: {
@@ -804,7 +804,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
                                 },
                                 {
                                     name: "ATOMIST_ENVIRONMENT",
-                                    value: req.env,
+                                    value: req.environment,
                                 },
                             ],
                             resources: {
@@ -862,7 +862,7 @@ export function serviceTemplate(req: KubeApplication): Service {
             labels: {
                 app: req.name,
                 teamId: req.teamId,
-                env: req.env,
+                env: req.environment,
                 creator,
             },
         },
@@ -954,7 +954,7 @@ export function ingressTemplate(req: KubeApplication): Ingress {
             labels: {
                 ingress: "nginx",
                 teamId: req.teamId,
-                env: req.env,
+                env: req.environment,
                 creator,
             },
         },

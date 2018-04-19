@@ -194,7 +194,6 @@ JSON Path | Value
 `fulfillment.name` | @atomist/k8-automation
 `fulfillment.method` | side-effect
 `state` | requested
-`environment` | equal to the value of the running k8-automation instance's `configuration.environment`
 
 In addition, it expects the SDM Goal to have a `data` property that
 when parsed as JSON has a `kubernetes` property whose value is an
@@ -203,6 +202,7 @@ object with the following properties:
 Property | Required | Description
 ---------|----------|------------
 `name` | Yes | Name of the resources that will be created
+`environment` | Yes | Must equal the value of the running k8-automation instance's `configuration.environment`
 `ns` | No | Namespace to create the resources in, default is "default"
 `imagePullSecret` | No | Name of the Kubernetes image pull secret, if omitted the deployment spec is not provided an image pull secret
 `port` | No | Port the container service listens on, if omitted the deployment spec will have no configured liveness or readiness probe and no service will be created

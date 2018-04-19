@@ -39,7 +39,7 @@ describe("k8", () => {
         it("should create a deployment spec", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -67,7 +67,7 @@ describe("k8", () => {
             assert(d.spec.template.spec.containers[0].env[0].name === "ATOMIST_TEAMS");
             assert(d.spec.template.spec.containers[0].env[0].value === req.teamId);
             assert(d.spec.template.spec.containers[0].env[1].name === "ATOMIST_ENVIRONMENT");
-            assert(d.spec.template.spec.containers[0].env[1].value === req.env);
+            assert(d.spec.template.spec.containers[0].env[1].value === req.environment);
             assert(d.spec.template.spec.containers[0].ports.length === 1);
             assert(d.spec.template.spec.containers[0].ports[0].name === "http");
             assert(d.spec.template.spec.containers[0].ports[0].containerPort === req.port);
@@ -96,7 +96,7 @@ describe("k8", () => {
         it("should create a custom deployment spec", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -114,7 +114,7 @@ describe("k8", () => {
                     labels: {
                         app: req.name,
                         teamId: req.teamId,
-                        env: req.env,
+                        env: req.environment,
                         creator: "atomist.k8-automation",
                     },
                 },
@@ -133,12 +133,12 @@ describe("k8", () => {
                             labels: {
                                 app: req.name,
                                 teamId: req.teamId,
-                                env: req.env,
+                                env: req.environment,
                                 creator: "atomist.k8-automation",
                             },
                             annotations: {
                                 // tslint:disable-next-line:max-line-length
-                                "atomist.com/k8vent": `{"environment":"${req.env}","webhooks":["https://webhook.atomist.com/atomist/kube/teams/${req.teamId}"]}`,
+                                "atomist.com/k8vent": `{"environment":"${req.environment}","webhooks":["https://webhook.atomist.com/atomist/kube/teams/${req.teamId}"]}`,
                             },
                         },
                         spec: {
@@ -154,7 +154,7 @@ describe("k8", () => {
                                         },
                                         {
                                             name: "ATOMIST_ENVIRONMENT",
-                                            value: req.env,
+                                            value: req.environment,
                                         },
                                     ],
                                     resources: {
@@ -228,7 +228,7 @@ describe("k8", () => {
         it("should create a service spec", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -242,7 +242,7 @@ describe("k8", () => {
                     labels: {
                         creator: "atomist.k8-automation",
                         app: req.name,
-                        env: req.env,
+                        env: req.environment,
                         teamId: req.teamId,
                     },
                     name: req.name,
@@ -274,7 +274,7 @@ describe("k8", () => {
         it("should return the default", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -288,7 +288,7 @@ describe("k8", () => {
         it("should return the host and path", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -309,7 +309,7 @@ describe("k8", () => {
         it("should create a wildcard ingress spec", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -357,7 +357,7 @@ describe("k8", () => {
         it("should create a host ingress spec", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -411,7 +411,7 @@ describe("k8", () => {
         it("should create an ingress patch", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -421,7 +421,7 @@ describe("k8", () => {
             const i = ingressTemplate(req);
             const pReq: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "and-dream-of-sheep",
                 image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
@@ -461,7 +461,7 @@ describe("k8", () => {
         it("should add a host rule", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -471,7 +471,7 @@ describe("k8", () => {
             const i = ingressTemplate(req);
             const pReq: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "and-dream-of-sheep",
                 image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
@@ -519,7 +519,7 @@ describe("k8", () => {
         it("should add to host rule", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -530,7 +530,7 @@ describe("k8", () => {
             const i = ingressTemplate(req);
             const pReq: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "and-dream-of-sheep",
                 image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
@@ -572,7 +572,7 @@ describe("k8", () => {
         it("should throw an error if two services try to use same path", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -582,7 +582,7 @@ describe("k8", () => {
             const i = ingressTemplate(req);
             const pReq: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "and-dream-of-sheep",
                 image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
@@ -599,7 +599,7 @@ describe("k8", () => {
         it("should create an ingress patch", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -672,7 +672,7 @@ describe("k8", () => {
         it("should create an ingress patch for a host", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -748,7 +748,7 @@ describe("k8", () => {
         it("should not do anything if there is no match", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -803,7 +803,7 @@ describe("k8", () => {
         it("should remove the host-specific rule", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -920,7 +920,7 @@ describe("k8", () => {
         it("should remove the host entry", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -1002,7 +1002,7 @@ describe("k8", () => {
         it("should remove the only path and return an empty object", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
@@ -1052,7 +1052,7 @@ describe("k8", () => {
         it("should refuse to remove the path of another service", () => {
             const req: KubeApplication = {
                 teamId: "KAT3BU5H",
-                env: "new-wave",
+                environment: "new-wave",
                 ns: "hounds-of-love",
                 name: "cloudbusting",
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
