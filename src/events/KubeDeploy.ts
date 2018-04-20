@@ -146,7 +146,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
 
                     const params: UpdateSdmGoalParams = {
                         state: "success",
-                        description: "Deployed ${depName} to Kubernetes",
+                        description: `Deployed \`${depName}\` to Kubernetes`,
                     };
                     return updateGoal(ctx, sdmGoal, params)
                         .then(() => Success, err => {
