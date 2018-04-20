@@ -36,5 +36,6 @@ subscription SdmGoalSub {
       environment
       name
     }
+    data
   }
 }
