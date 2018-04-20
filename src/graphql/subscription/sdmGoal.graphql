@@ -23,7 +23,7 @@ subscription SdmGoalSub {
     ts
     error
     retryFeasible
-    provenance {
+    provenance { 
       correlationId
       registration
       name
@@ -36,6 +36,7 @@ subscription SdmGoalSub {
       environment
       name
     }
+    approvalRequired
     data
   }
 }
