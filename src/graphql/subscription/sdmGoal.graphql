@@ -36,5 +36,7 @@ subscription SdmGoalSub {
       environment
       name
     }
+    approvalRequired
+    data
   }
 }
