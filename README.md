@@ -4,12 +4,18 @@
 [![Build Status](https://travis-ci.org/atomist/k8-automation.svg?branch=master)](https://travis-ci.org/atomist/k8-automation)
 [![Docker Pulls](https://img.shields.io/docker/pulls/atomist/k8-automation.svg)](https://hub.docker.com/r/atomist/k8-automation/)
 
-This repository contains automations for deploying to Kubernetes using
-the [Atomist][atomist] API.  These examples use the
-[`@atomist/automation-client`][client] node module to implement a
-local client that connects to the Atomist API.
+This repository contains automations for deploying applications to
+Kubernetes using the [Atomist][atomist] API.  Currently, deploying
+Docker images as deployments with optional services and ingress rules
+is supported.
+
+This project uses the [`@atomist/automation-client`][client] and
+[`@atomist/sdm`][sdm] node modules to implement a local client that
+connects to the Atomist API and executes goals on behalf of a software
+delivery machine.
 
 [client]: https://github.com/atomist/automation-client-ts (@atomist/automation-client Node Module)
+[sdm]: https://github.com/atomist/github-sdm (@atomist/sdm Node Module)
 
 ## Prerequisites
 
@@ -91,7 +97,7 @@ Atomist, Slack, and GitHub.
 The best way to run k8-automation is within the Kubernetes cluster
 where you want it to manage deployments.  You can use the Kubernetes
 resource files in the [kube directory][kube] as a starting point for
-deploying k8vent in your kubernetes cluster.
+deploying this automation in your Kubernetes cluster.
 
 k8-automation needs write access to service, deployment, and ingress
 resources in your Kubernetes cluster to operate properly.  It uses the
@@ -107,30 +113,20 @@ sufficient permissions to run k8-automation.
 Before deploying either with or without RBAC, you will need to create
 a namespace for the k8-automation resources and a secret with the
 k8-automation configuration.  The only required configuration values
-are the `teamIds` and `token`, but you may also want to specify
-`custom.hostUrl` so GitHub commit statuses with the service endpoint
-have the proper URL.  The `teamIds` should be your Atomist team ID(s),
-which you can get from the settings page for your Atomist workspace or
-by sending `team` as a message to the Atomist bot, e.g., `@atomist team`,
-in Slack.  The `token` should be a [GitHub personal access
-token][ghpat] with `read:org` and `repo` scopes.
+are the `teamIds` and `token`.  The `teamIds` should be your Atomist
+team ID(s), which you can get from the settings page for your Atomist
+workspace or by sending `team` as a message to the Atomist bot, e.g.,
+`@atomist team`, in Slack.  The `token` should be a [GitHub personal
+access token][ghpat] with `read:org` and `repo` scopes.
 
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
 $ kubectl create secret --namespace=k8-automation generic automation \
-    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN","custom":{"hostUrl":"https://IP","namespace":"NS","imagePullSecret":"SECRET_NAME"}}'
+    --from-literal=config='{"teamIds":["TEAM_ID"],"token":"TOKEN"}'
 ```
 
 In the above commands, replace `TEAM_ID` with your Atomist team ID,
-`TOKEN` with your GitHub token, and `IP` with the IP address of your
-ingress controller.  For minikube, you can get this from the `minikube
-ip` command.  You can optionally provide the `namespace` to deploy to.
-If it is not specified, one is programmatically generated using the
-Atomist team ID and the deployment environment name.  If your Docker
-registry requires authentication, you can create your image pull
-secret in Kubernetes and supply its name as the value of the
-`imagePullSecret` custom configuration key.  If pulling your images
-does not require authentication, you can omit this configuration key.
+and `TOKEN` with your GitHub token.
 
 [kube]: ./assets/kube/ (k8-automation Kubernetes Resources)
 [rbac]: https://kubernetes.io/docs/admin/authorization/rbac/ (Kubernetes RBAC)
@@ -178,13 +174,41 @@ Then run the command to create the `kube/rbac.yaml` resources again.
 To deploy on clusters without RBAC, run the following commands
 
 ```console
-$ kubectl apply -f https://raw.githubusercontent.com/atomist/k8vent/master/assets/kube/deployment-no-rbac.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/deployment-no-rbac.yaml
 ```
 
 If the logs from the k8-automation pod have lines indicating a failure
 to create, patch, or delete Kubernetes resources, then the default
 service account does not have read permissions to pods and you likely
 need to deploy using RBAC.
+
+## SDM interface
+
+The KubeDeploy event handler triggers off an SDM Goal with the
+following properties:
+
+JSON Path | Value
+----------|------
+`fulfillment.name` | @atomist/k8-automation
+`fulfillment.method` | side-effect
+`state` | requested
+
+In addition, it expects the SDM Goal to have a `data` property that
+when parsed as JSON has a `kubernetes` property whose value is an
+object with the following properties:
+
+Property | Required | Description
+---------|----------|------------
+`name` | Yes | Name of the resources that will be created
+`environment` | Yes | Must equal the value of the running k8-automation instance's `configuration.environment`
+`ns` | No | Namespace to create the resources in, default is "default"
+`imagePullSecret` | No | Name of the Kubernetes image pull secret, if omitted the deployment spec is not provided an image pull secret
+`port` | No | Port the container service listens on, if omitted the deployment spec will have no configured liveness or readiness probe and no service will be created
+`path` | No | Absolute path under the hostname the ingress controller should use for this service, if omitted no ingress rule is created
+`host` | No | Host name to use in ingress rule, only has effect if `path` is provided, if omitted when `path` is provided, the rule is created under the wildcard host
+`protocol` | No | Scheme to use when setting the URL for the service endpoint, "https" or "http", default is "http"
+`deploymentSpec` | No | Stringified JSON Kubernetes deployment spec to overlay on top of default deployment spec, it only needs to contain the properties you want to add or override from the default
+`serviceSpec` | No | Stringified JSON Kubernetes service spec to overlay on top of default service spec, it only needs to contain the properties you want to add or override from the default
 
 ## Support
 
@@ -337,5 +361,5 @@ the contents of the release notes.
 Created by [Atomist][atomist].
 Need Help?  [Join our Slack team][slack].
 
-[atomist]: https://atomist.com/ (Atomist - Development Automation)
+[atomist]: https://atomist.com/ (Atomist - How Teams Deliver Software)
 [slack]: https://join.atomist.com/ (Atomist Community Slack)

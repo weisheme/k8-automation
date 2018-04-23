@@ -1,0 +1,42 @@
+subscription SdmGoalSub {
+  SdmGoal {
+    uniqueName
+    name
+    id
+    environment
+    sha
+    branch
+    repo {
+      name
+      owner
+      providerId
+    }
+    fulfillment {
+      method
+      name
+    }
+    description
+    url
+    state
+    externalKey
+    goalSet
+    ts
+    error
+    retryFeasible
+    provenance {
+      correlationId
+      registration
+      name
+      version
+      ts
+      userId
+      channelId
+    }
+    preConditions {
+      environment
+      name
+    }
+    approvalRequired
+    data
+  }
+}
