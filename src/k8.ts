@@ -791,16 +791,6 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
                             name: req.name,
                             image: req.image,
                             imagePullPolicy: "IfNotPresent",
-                            env: [
-                                {
-                                    name: "ATOMIST_TEAMS",
-                                    value: req.teamId,
-                                },
-                                {
-                                    name: "ATOMIST_ENVIRONMENT",
-                                    value: req.environment,
-                                },
-                            ],
                             resources: {
                                 limits: {
                                     cpu: "300m",

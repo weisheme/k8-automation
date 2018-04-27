@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.2...HEAD
+
+## [0.7.2][] - 2018-04-27
+
+[0.7.2]: https://github.com/atomist/k8-automation/compare/0.7.1...0.7.2
+
+Merge release
+
+### Changed
+
+-   Remove environment variables from deployment spec template
 
 ## [0.7.1][] - 2018-04-27
 

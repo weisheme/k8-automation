@@ -63,11 +63,6 @@ describe("k8", () => {
             assert(d.spec.template.spec.containers.length === 1);
             assert(d.spec.template.spec.containers[0].name === req.name);
             assert(d.spec.template.spec.containers[0].image === req.image);
-            assert(d.spec.template.spec.containers[0].env.length === 2);
-            assert(d.spec.template.spec.containers[0].env[0].name === "ATOMIST_TEAMS");
-            assert(d.spec.template.spec.containers[0].env[0].value === req.teamId);
-            assert(d.spec.template.spec.containers[0].env[1].name === "ATOMIST_ENVIRONMENT");
-            assert(d.spec.template.spec.containers[0].env[1].value === req.environment);
             assert(d.spec.template.spec.containers[0].ports.length === 1);
             assert(d.spec.template.spec.containers[0].ports[0].name === "http");
             assert(d.spec.template.spec.containers[0].ports[0].containerPort === req.port);
@@ -147,16 +142,6 @@ describe("k8", () => {
                                     name: req.name,
                                     image: req.image,
                                     imagePullPolicy: "IfNotPresent",
-                                    env: [
-                                        {
-                                            name: "ATOMIST_TEAMS",
-                                            value: req.teamId,
-                                        },
-                                        {
-                                            name: "ATOMIST_ENVIRONMENT",
-                                            value: req.environment,
-                                        },
-                                    ],
                                     resources: {
                                         limits: {
                                             cpu: "300m",
