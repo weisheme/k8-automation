@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.1...HEAD
+
+## [0.7.1][] - 2018-04-27
+
+[0.7.1]: https://github.com/atomist/k8-automation/compare/0.7.0...0.7.1
+
+Merge release
+
+### Changed
+
+-   Use standard merge when combining default and provided Kubernetes
+    resource specs
 
 ## [0.7.0][] - 2018-04-18
 

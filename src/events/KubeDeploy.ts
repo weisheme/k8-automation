@@ -27,7 +27,7 @@ import {
     SuccessPromise,
     Tags,
 } from "@atomist/automation-client";
-import { runningAutomationClient } from "@atomist/automation-client/automationClient";
+import { automationClientInstance } from "@atomist/automation-client/automationClient";
 import {
     updateGoal,
     UpdateSdmGoalParams,
@@ -73,7 +73,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                     const owner = g.repo.owner;
                     const sha = g.sha;
                     const teamId = ctx.teamId;
-                    const env = runningAutomationClient.configuration.environment;
+                    const env = automationClientInstance().configuration.environment;
                     const depName = `${teamId}:${env}:${owner}:${repo}:${sha}`;
                     if (!commit.image) {
                         const msg = `Kubernetes deploy requested for ${depName} but that commit ` +

@@ -523,7 +523,7 @@ async function upsertNamespace(req: KubeResourceRequest): Promise<void> {
         .then(() => logger.debug(`Namespace ${req.ns} exists`), e => {
             logger.debug(`Failed to get namespace ${req.ns}, creating: ${e.message}`);
             const ns: Namespace = namespaceTemplate(req);
-            return retryP(() => req.core.namespaces.post({ body: ns }), `Create namespace ${req.ns}`);
+            return retryP(() => req.core.namespaces.post({ body: ns }), `create namespace ${req.ns}`);
         });
 }
 
@@ -696,12 +696,6 @@ async function deleteIngress(req: KubeDeleteResourceRequest): Promise<void> {
 
 const creator = `atomist.k8-automation`;
 
-function smartMerge<T, U>(objValue: T, srcValue: U): U {
-    if (_.isArray(srcValue)) {
-        return srcValue;
-    }
-}
-
 /**
  * Create namespace resource.
  *
@@ -839,7 +833,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
     if (req.deploymentSpec) {
         try {
             const depSpec: Partial<Deployment> = JSON.parse(req.deploymentSpec);
-            _.mergeWith(d, depSpec, smartMerge);
+            _.merge(d, depSpec);
         } catch (e) {
             throw new Error(`Failed to parse provided deployment spec as JSON: ${e.message}`);
         }
@@ -886,7 +880,7 @@ export function serviceTemplate(req: KubeApplication): Service {
     if (req.serviceSpec) {
         try {
             const svcSpec: Partial<Service> = JSON.parse(req.serviceSpec);
-            _.mergeWith(s, svcSpec, smartMerge);
+            _.merge(s, svcSpec);
         } catch (e) {
             throw new Error(`Failed to parse provided service spec as JSON: ${e.message}`);
         }
