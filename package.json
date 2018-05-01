@@ -1,6 +1,6 @@
 {
   "name": "@atomist/k8-automation",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Automations for deploying, updating, reporting resources in Kubernetes",
   "author": "Atomist",
   "license": "Apache-2.0",
@@ -18,7 +18,7 @@
     "kubernetes"
   ],
   "dependencies": {
-    "@atomist/automation-client": "^0.14.1",
+    "@atomist/automation-client": "https://atomist.jfrog.io/atomist/npm-dev/@atomist/automation-client/-/@atomist/automation-client-0.14.2-20180501182736.tgz",
     "@atomist/sdm": "https://r.atomist.com/BJ7HVKvv3M",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
