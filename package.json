@@ -18,8 +18,8 @@
     "kubernetes"
   ],
   "dependencies": {
-    "@atomist/automation-client": "https://atomist.jfrog.io/atomist/npm-dev/@atomist/automation-client/-/@atomist/automation-client-0.14.2-20180501182736.tgz",
-    "@atomist/sdm": "https://r.atomist.com/BJ7HVKvv3M",
+    "@atomist/automation-client": "^0.14.1",
+    "@atomist/sdm": "https://r.atomist.com/Sk4vMULUpf",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
     "kubernetes-client": "^4.0.0",
