@@ -57,12 +57,12 @@ export interface CommitForSdmGoal {
 @Tags("deploy", "kubernetes")
 export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
 
-    public async handle(ev: EventFired<SdmGoalSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
+    public handle(ev: EventFired<SdmGoalSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
         return Promise.all(ev.data.SdmGoal.map(g => {
             const sdmGoal = g as SdmGoal;
             return fetchCommitForSdmGoal(ctx, sdmGoal)
-                .then(async (commit: CommitForSdmGoal) => {
+                .then((commit: CommitForSdmGoal) => {
                     const eligible = eligibleDeployGoal(sdmGoal, commit);
                     if (eligible !== Success) {
                         logger.info(`SDM goal is not eligible for Kubernetes deploy: ${eligible.message}`);
@@ -126,7 +126,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                     }
                     kubeApp.ns = kubeApp.ns || "default";
                     if (kubeApp.environment !== env) {
-                        logger.info(`SDM goal data kuberenetes environment '${kubeApp.environment}' is this ` +
+                        logger.info(`SDM goal data kuberenetes environment '${kubeApp.environment}' is not this ` +
                             `environment '${env}'`);
                         return Success;
                     }
@@ -137,23 +137,23 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                         teamId,
                         image,
                     };
-                    try {
-                        await upsertApplication(upsertReq);
-                    } catch (e) {
-                        const msg = `failed to deploy ${depName} to Kubernetes: ${e.message}`;
-                        return failGoal(ctx, sdmGoal, msg);
-                    }
-
-                    const params: UpdateSdmGoalParams = {
-                        state: "success",
-                        description: `Deployed \`${depName}\` to Kubernetes`,
-                    };
-                    return updateGoal(ctx, sdmGoal, params)
-                        .then(() => Success, err => {
-                            const message = `Successfully deployed ${depName} to Kubernetes, but failed to ` +
-                                `update the SDM goal: ${err.message}`;
-                            logger.error(message);
-                            return { code: 1, message };
+                    return upsertApplication(upsertReq)
+                        .catch(e => {
+                            const msg = `failed to deploy ${depName} to Kubernetes: ${e.message}`;
+                            return failGoal(ctx, sdmGoal, msg);
+                        })
+                        .then(() => {
+                            const params: UpdateSdmGoalParams = {
+                                state: "success",
+                                description: `Deployed \`${depName}\` to Kubernetes`,
+                            };
+                            return updateGoal(ctx, sdmGoal, params)
+                                .then(() => Success, err => {
+                                    const message = `Successfully deployed ${depName} to Kubernetes, but failed to ` +
+                                        `update the SDM goal: ${err.message}`;
+                                    logger.error(message);
+                                    return { code: 1, message };
+                                });
                         });
                 });
         }))
@@ -195,7 +195,7 @@ export function eligibleDeployGoal(goal: SdmGoal, commit: CommitForSdmGoal): Han
  * @param message informative error message
  * @return a failure handler result using the provided error message
  */
-async function failGoal(ctx: HandlerContext, goal: SdmGoal, message: string): Promise<HandlerResult> {
+function failGoal(ctx: HandlerContext, goal: SdmGoal, message: string): Promise<HandlerResult> {
     logger.error(message);
     const params: UpdateSdmGoalParams = {
         state: "failure",

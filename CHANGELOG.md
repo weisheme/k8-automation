@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.2...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.3...HEAD
+
+## [0.7.3][] - 2018-05-01
+
+[0.7.3]: https://github.com/atomist/k8-automation/compare/0.7.2...0.7.3
+
+Mayday release
+
+### Changed
+
+-   Remove async/await
 
 ## [0.7.2][] - 2018-04-27
 

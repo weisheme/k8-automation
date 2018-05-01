@@ -142,7 +142,7 @@ function reqFilter<T>(k: string, v: T): T {
  *
  * @param req application creation request
  */
-export async function upsertApplication(upReq: KubeApplicationRequest): Promise<void> {
+export function upsertApplication(upReq: KubeApplicationRequest): Promise<void> {
 
     const core = new k8.Core(upReq.config);
     const ext = new k8.Extensions(upReq.config);
@@ -163,7 +163,7 @@ export async function upsertApplication(upReq: KubeApplicationRequest): Promise<
  *
  * @param req delete application request object
  */
-export async function deleteApplication(delReq: KubeDeleteRequest): Promise<void> {
+export function deleteApplication(delReq: KubeDeleteRequest): Promise<void> {
     const core = new k8.Core(delReq.config);
     const ext = new k8.Extensions(delReq.config);
     const req = { ...delReq, core, ext };
@@ -518,7 +518,7 @@ export interface Ingress {
  *
  * @param req Kuberenetes application request
  */
-async function upsertNamespace(req: KubeResourceRequest): Promise<void> {
+function upsertNamespace(req: KubeResourceRequest): Promise<void> {
     return req.core.namespaces(req.ns).get()
         .then(() => logger.debug(`Namespace ${req.ns} exists`), e => {
             logger.debug(`Failed to get namespace ${req.ns}, creating: ${e.message}`);
@@ -533,7 +533,7 @@ async function upsertNamespace(req: KubeResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes application request
  */
-async function upsertService(req: KubeResourceRequest): Promise<void> {
+function upsertService(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     if (!req.port) {
         logger.debug(`Port not provided, will not create service ${slug}`);
@@ -558,7 +558,7 @@ async function upsertService(req: KubeResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes application request
  */
-async function upsertDeployment(req: KubeResourceRequest): Promise<void> {
+function upsertDeployment(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(dep => {
@@ -599,7 +599,7 @@ async function upsertDeployment(req: KubeResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes resource request
  */
-async function upsertIngress(req: KubeResourceRequest): Promise<void> {
+function upsertIngress(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     if (!req.path) {
         logger.debug(`Path not provided, will not upsert ingress ${slug}`);
@@ -635,7 +635,7 @@ async function upsertIngress(req: KubeResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes delete request
  */
-async function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
+function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     return req.core.namespaces(req.ns).services(req.name).get()
         .then(() => {
@@ -649,7 +649,7 @@ async function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes delete request
  */
-async function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
+function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(() => {
@@ -666,7 +666,7 @@ async function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
  *
  * @param req Kuberenetes delete request
  */
-async function deleteIngress(req: KubeDeleteResourceRequest): Promise<void> {
+function deleteIngress(req: KubeDeleteResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     if (!req.path) {
         logger.debug(`No path provided for ${slug}, cannot delete ingress rule`);
@@ -1042,7 +1042,7 @@ const defaultRetryOptions = {
 /**
  * Retry Kube API call.
  */
-async function retryP<T>(
+function retryP<T>(
     k: () => Promise<T>,
     desc: string,
     options = defaultRetryOptions,
