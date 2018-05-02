@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: k8-automation
-        image: atomist/k8-automation:0.7.3
+        image: atomist/k8-automation:0.7.4-20180502194636
         imagePullPolicy: IfNotPresent
         env:
         - name: ATOMIST_CONFIG
