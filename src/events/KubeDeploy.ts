@@ -81,7 +81,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                         return failGoal(ctx, sdmGoal, msg);
                     }
                     const image = commit.image.imageName;
-                    logger.debug(`deploying ${depName}`);
+                    logger.debug(`Processing ${depName}`);
 
                     let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
                     const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
