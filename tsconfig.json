@@ -22,6 +22,7 @@
         "emitDecoratorMetadata": true
     },
     "exclude": [
+        "assets",
         "build",
         "node_modules",
         ".#*"
