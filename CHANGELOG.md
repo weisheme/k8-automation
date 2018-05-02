@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.3...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.4...HEAD
+
+## [0.7.4][] - 2018-05-01
+
+[0.7.4]: https://github.com/atomist/k8-automation/compare/0.7.3...0.7.4
+
+Patch release
+
+### Fixed
+
+-   Always use supplied deployment patch, even when patching
+-   Make SdmGoal description more user friendly
 
 ## [0.7.3][] - 2018-05-01
 

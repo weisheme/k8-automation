@@ -18,6 +18,7 @@ import "mocha";
 import * as assert from "power-assert";
 
 import {
+    deploymentPatch,
     deploymentTemplate,
     endpointBaseUrl,
     Ingress,
@@ -33,6 +34,66 @@ LoggingConfig.format = "cli";
 (logger as any).level = process.env.LOG_LEVEL || "info";
 
 describe("k8", () => {
+
+    describe("deploymentTemplate", () => {
+
+        it("should create a simple deployment patch", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+            };
+            const d = deploymentPatch(req);
+            const e = {
+                spec: {
+                    template: {
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                },
+                            ],
+                        },
+                    },
+                },
+            };
+            assert.deepStrictEqual(d, e);
+        });
+
+        it("should create a custom deployment patch", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                deploymentSpec:
+                    `{"spec":{"revisionHistoryLimit":5,"template":{"spec":{"dnsPolicy":"ClusterFirstWithHostNet"}}}}`,
+            };
+            const d = deploymentPatch(req);
+            const e = {
+                spec: {
+                    revisionHistoryLimit: 5,
+                    template: {
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                },
+                            ],
+                            dnsPolicy: "ClusterFirstWithHostNet",
+                        },
+                    },
+                },
+            };
+            assert.deepStrictEqual(d, e);
+        });
+
+    });
 
     describe("deploymentTemplate", () => {
 

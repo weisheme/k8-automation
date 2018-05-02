@@ -563,20 +563,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
     return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(dep => {
             logger.debug(`Updating deployment ${slug} using ${req.image}`);
-            const patch: Partial<Deployment> = {
-                spec: {
-                    template: {
-                        spec: {
-                            containers: [
-                                {
-                                    name: req.name,
-                                    image: req.image,
-                                },
-                            ],
-                        },
-                    },
-                },
-            };
+            const patch = deploymentPatch(req);
             return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
                 `patch deployment ${slug}`);
         }, e => {
@@ -711,6 +698,38 @@ export function namespaceTemplate(req: KubeApplication): Namespace {
         },
     };
     return ns;
+}
+
+/**
+ * Create deployment patch for a repo and image.
+ *
+ * @param req deployment template request
+ * @return deployment resource patch
+ */
+export function deploymentPatch(req: KubeApplication): Partial<Deployment> {
+    const patch: Partial<Deployment> = {
+        spec: {
+            template: {
+                spec: {
+                    containers: [
+                        {
+                            name: req.name,
+                            image: req.image,
+                        },
+                    ],
+                },
+            },
+        },
+    };
+    if (req.deploymentSpec) {
+        try {
+            const depSpec: Partial<Deployment> = JSON.parse(req.deploymentSpec);
+            _.merge(patch, depSpec);
+        } catch (e) {
+            throw new Error(`Failed to parse provided deployment spec as JSON: ${e.message}`);
+        }
+    }
+    return patch;
 }
 
 /**
