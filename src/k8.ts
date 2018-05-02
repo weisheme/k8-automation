@@ -701,7 +701,9 @@ export function namespaceTemplate(req: KubeApplication): Namespace {
 }
 
 /**
- * Create deployment patch for a repo and image.
+ * Create deployment patch for a repo and image.  If the request has a
+ * `deploymentSpec`, it is merged into the patch created by this
+ * function.
  *
  * @param req deployment template request
  * @return deployment resource patch
