@@ -523,6 +523,7 @@ function upsertNamespace(req: KubeResourceRequest): Promise<void> {
         .then(() => logger.debug(`Namespace ${req.ns} exists`), e => {
             logger.debug(`Failed to get namespace ${req.ns}, creating: ${e.message}`);
             const ns: Namespace = namespaceTemplate(req);
+            logger.debug(`Creating namespace ${req.ns} using '${stringify(ns)}'`);
             return retryP(() => req.core.namespaces.post({ body: ns }), `create namespace ${req.ns}`);
         });
 }
@@ -549,6 +550,7 @@ function upsertService(req: KubeResourceRequest): Promise<void> {
                 logger.error(e.message);
                 return Promise.reject(e);
             }
+            logger.debug(`Creating service ${slug} using '${stringify(svc)}'`);
             return retryP(() => req.core.namespaces(req.ns).services.post({ body: svc }), `create service ${slug}`);
         });
 }
@@ -581,7 +583,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 logger.error(e.message);
                 return Promise.reject(e);
             }
-            logger.debug(`Create deployment ${slug} using '${stringify(dep)}'`);
+            logger.debug(`Creating deployment ${slug} using '${stringify(dep)}'`);
             return retryP(() => req.ext.namespaces(req.ns).deployments.post({ body: dep }),
                 `create deployment ${slug}`);
         });
@@ -601,7 +603,6 @@ function upsertIngress(req: KubeResourceRequest): Promise<void> {
     }
     return req.ext.namespaces(req.ns).ingresses(ingressName).get()
         .then((ing: Ingress) => {
-            logger.debug(`Updating ingress ${ingressName} for ${slug}`);
             let patch: Partial<Ingress>;
             try {
                 patch = ingressPatch(ing, req);
@@ -613,11 +614,13 @@ function upsertIngress(req: KubeResourceRequest): Promise<void> {
                 logger.debug(`Ingress ${ingressName} does not need updating for ${slug}: ${stringify(ing)}`);
                 return Promise.resolve();
             }
+            logger.debug(`Updating ingress ${ingressName} for ${slug} using '${stringify(patch)}'`);
             return retryP(() => req.ext.namespaces(req.ns).ingresses(ingressName).patch({ body: patch }),
                 `patch ingress ${req.ns}/${ingressName} for ${slug}`);
         }, e => {
             logger.debug(`Failed to get ingress ${req.ns}/${ingressName}, creating: ${e.message}`);
             const ing = ingressTemplate(req);
+            logger.debug(`Creating ingress ${ingressName} for ${slug} using '${stringify(ing)}'`);
             return retryP(() => req.ext.namespaces(req.ns).ingresses.post({ body: ing }),
                 `create ingress ${req.ns}/${ingressName} for ${slug}`);
         });
