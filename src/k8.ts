@@ -747,6 +747,9 @@ export function deploymentPatch(req: KubeApplication): Partial<Deployment> {
             },
         },
     };
+    if (req.replicas) {
+        patch.spec.replicas = req.replicas;
+    }
     if (req.deploymentSpec) {
         try {
             const depSpec: Partial<Deployment> = JSON.parse(req.deploymentSpec);
