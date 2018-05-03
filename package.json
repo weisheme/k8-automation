@@ -19,7 +19,7 @@
   ],
   "dependencies": {
     "@atomist/automation-client": "^0.14.1",
-    "@atomist/sdm": "https://r.atomist.com/Sk4vMULUpf",
+    "@atomist/sdm": "https://r.atomist.com/r1NJweUdaz",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
     "kubernetes-client": "^4.0.0",

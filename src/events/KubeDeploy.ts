@@ -139,10 +139,6 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                         image,
                     };
                     return upsertApplication(upsertReq)
-                        .catch(e => {
-                            const msg = `Failed to deploy ${depName} to Kubernetes: ${e.message}`;
-                            return failGoal(ctx, sdmGoal, msg);
-                        })
                         .then(() => {
                             logger.info(`Successfully deployed ${depName} to Kubernetes`);
                             const params: UpdateSdmGoalParams = {
@@ -156,6 +152,10 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                                     logger.error(message);
                                     return { code: 1, message };
                                 });
+                        })
+                        .catch(e => {
+                            const msg = `Failed to deploy ${depName} to Kubernetes: ${e.message}`;
+                            return failGoal(ctx, sdmGoal, msg);
                         });
                 });
         }))
