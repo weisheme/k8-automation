@@ -700,6 +700,15 @@ export function namespaceTemplate(req: KubeApplication): Namespace {
     return ns;
 }
 
+function labels(req: KubeApplication): { [key: string]: string } {
+    return {
+        app: req.name,
+        teamId: req.teamId,
+        env: req.environment,
+        creator,
+    };
+}
+
 /**
  * Create deployment patch for a repo and image.  If the request has a
  * `deploymentSpec`, it is merged into the patch created by this
@@ -710,6 +719,13 @@ export function namespaceTemplate(req: KubeApplication): Namespace {
  */
 export function deploymentPatch(req: KubeApplication): Partial<Deployment> {
     const patch: Partial<Deployment> = {
+        apiVersion: "extensions/v1beta1",
+        kind: "Deployment",
+        metadata: {
+            name: req.name,
+            namespace: req.ns,
+            labels: labels(req),
+        },
         spec: {
             template: {
                 spec: {
@@ -777,12 +793,8 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         kind: "Deployment",
         metadata: {
             name: req.name,
-            labels: {
-                app: req.name,
-                teamId: req.teamId,
-                env: req.environment,
-                creator,
-            },
+            namespace: req.ns,
+            labels: labels(req),
         },
         spec: {
             replicas: 1,
@@ -796,12 +808,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
             template: {
                 metadata: {
                     name: req.name,
-                    labels: {
-                        app: req.name,
-                        teamId: req.teamId,
-                        env: req.environment,
-                        creator,
-                    },
+                    labels: labels(req),
                     annotations: {
                         "atomist.com/k8vent": k8ventAnnot,
                     },
@@ -864,12 +871,8 @@ export function serviceTemplate(req: KubeApplication): Service {
         apiVersion: "v1",
         metadata: {
             name: req.name,
-            labels: {
-                app: req.name,
-                teamId: req.teamId,
-                env: req.environment,
-                creator,
-            },
+            namespace: req.ns,
+            labels: labels(req),
         },
         spec: {
             ports: [
@@ -952,6 +955,7 @@ export function ingressTemplate(req: KubeApplication): Ingress {
         apiVersion: "extensions/v1beta1",
         metadata: {
             name: ingressName,
+            namespace: req.ns,
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/",

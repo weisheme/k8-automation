@@ -19,6 +19,7 @@ Patch release
 
 -   Always use supplied deployment patch, even when patching
 -   Make SdmGoal description more user friendly
+-   Added metadata to patches so specs can reference its fields
 
 ## [0.7.3][] - 2018-05-01
 
