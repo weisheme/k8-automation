@@ -21,6 +21,10 @@ Patch release
 -   Make SdmGoal description more user friendly
 -   Added metadata to patches so specs can reference its fields
 
+### Added
+
+-   Support replicas in SDM goal data
+
 ## [0.7.3][] - 2018-05-01
 
 [0.7.3]: https://github.com/atomist/k8-automation/compare/0.7.2...0.7.3

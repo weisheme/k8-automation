@@ -158,8 +158,9 @@ describe("k8", () => {
                 image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
                 imagePullSecret: "comfort",
                 port: 5510,
-                deploymentSpec:
-                    `{"spec":{"revisionHistoryLimit":5,"template":{"spec":{"dnsPolicy":"ClusterFirstWithHostNet"}}}}`,
+                // tslint:disable-next-line:max-line-length
+                deploymentSpec: `{"spec":{"replicas":2,"revisionHistoryLimit":5,"template":{"spec":{"dnsPolicy":"ClusterFirstWithHostNet"}}}}`,
+                replicas: 12,
             };
             const d = deploymentTemplate(req);
             const e = {
@@ -175,7 +176,7 @@ describe("k8", () => {
                     },
                 },
                 spec: {
-                    replicas: 1,
+                    replicas: 2,
                     revisionHistoryLimit: 5,
                     selector: {
                         matchLabels: {
@@ -253,6 +254,202 @@ describe("k8", () => {
                                     name: req.imagePullSecret,
                                 },
                             ],
+                        },
+                    },
+                    strategy: {
+                        type: "RollingUpdate",
+                        rollingUpdate: {
+                            maxUnavailable: 0,
+                            maxSurge: 1,
+                        },
+                    },
+                },
+            };
+            assert.deepStrictEqual(d, e);
+        });
+
+        it("should create a deployment spec with zero replicas", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                imagePullSecret: "comfort",
+                port: 5510,
+                replicas: 0,
+            };
+            const d = deploymentTemplate(req);
+            const e = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Deployment",
+                metadata: {
+                    name: req.name,
+                    labels: {
+                        app: req.name,
+                        teamId: req.teamId,
+                        env: req.environment,
+                        creator: "atomist.k8-automation",
+                    },
+                },
+                spec: {
+                    replicas: 0,
+                    revisionHistoryLimit: 3,
+                    selector: {
+                        matchLabels: {
+                            app: req.name,
+                            teamId: req.teamId,
+                        },
+                    },
+                    template: {
+                        metadata: {
+                            name: req.name,
+                            labels: {
+                                app: req.name,
+                                teamId: req.teamId,
+                                env: req.environment,
+                                creator: "atomist.k8-automation",
+                            },
+                            annotations: {
+                                // tslint:disable-next-line:max-line-length
+                                "atomist.com/k8vent": `{"environment":"${req.environment}","webhooks":["https://webhook.atomist.com/atomist/kube/teams/${req.teamId}"]}`,
+                            },
+                        },
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                    imagePullPolicy: "IfNotPresent",
+                                    resources: {
+                                        limits: {
+                                            cpu: "300m",
+                                            memory: "384Mi",
+                                        },
+                                        requests: {
+                                            cpu: "100m",
+                                            memory: "320Mi",
+                                        },
+                                    },
+                                    readinessProbe: {
+                                        httpGet: {
+                                            path: "/",
+                                            port: "http",
+                                            scheme: "HTTP",
+                                        },
+                                        initialDelaySeconds: 30,
+                                        timeoutSeconds: 3,
+                                        periodSeconds: 10,
+                                        successThreshold: 1,
+                                        failureThreshold: 3,
+                                    },
+                                    livenessProbe: {
+                                        httpGet: {
+                                            path: "/",
+                                            port: "http",
+                                            scheme: "HTTP",
+                                        },
+                                        initialDelaySeconds: 30,
+                                        timeoutSeconds: 3,
+                                        periodSeconds: 10,
+                                        successThreshold: 1,
+                                        failureThreshold: 3,
+                                    },
+                                    ports: [
+                                        {
+                                            name: "http",
+                                            containerPort: req.port,
+                                            protocol: "TCP",
+                                        },
+                                    ],
+                                },
+                            ],
+                            dnsPolicy: "ClusterFirst",
+                            restartPolicy: "Always",
+                            imagePullSecrets: [
+                                {
+                                    name: req.imagePullSecret,
+                                },
+                            ],
+                        },
+                    },
+                    strategy: {
+                        type: "RollingUpdate",
+                        rollingUpdate: {
+                            maxUnavailable: 0,
+                            maxSurge: 1,
+                        },
+                    },
+                },
+            };
+            assert.deepStrictEqual(d, e);
+        });
+
+        it("should create a deployment spec with custom replicas", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                replicas: 12,
+            };
+            const d = deploymentTemplate(req);
+            const e = {
+                apiVersion: "extensions/v1beta1",
+                kind: "Deployment",
+                metadata: {
+                    name: req.name,
+                    labels: {
+                        app: req.name,
+                        teamId: req.teamId,
+                        env: req.environment,
+                        creator: "atomist.k8-automation",
+                    },
+                },
+                spec: {
+                    replicas: 12,
+                    revisionHistoryLimit: 3,
+                    selector: {
+                        matchLabels: {
+                            app: req.name,
+                            teamId: req.teamId,
+                        },
+                    },
+                    template: {
+                        metadata: {
+                            name: req.name,
+                            labels: {
+                                app: req.name,
+                                teamId: req.teamId,
+                                env: req.environment,
+                                creator: "atomist.k8-automation",
+                            },
+                            annotations: {
+                                // tslint:disable-next-line:max-line-length
+                                "atomist.com/k8vent": `{"environment":"${req.environment}","webhooks":["https://webhook.atomist.com/atomist/kube/teams/${req.teamId}"]}`,
+                            },
+                        },
+                        spec: {
+                            containers: [
+                                {
+                                    name: req.name,
+                                    image: req.image,
+                                    imagePullPolicy: "IfNotPresent",
+                                    resources: {
+                                        limits: {
+                                            cpu: "300m",
+                                            memory: "384Mi",
+                                        },
+                                        requests: {
+                                            cpu: "100m",
+                                            memory: "320Mi",
+                                        },
+                                    },
+                                },
+                            ],
+                            dnsPolicy: "ClusterFirst",
+                            restartPolicy: "Always",
                         },
                     },
                     strategy: {

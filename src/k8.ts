@@ -96,6 +96,11 @@ export interface KubeApplication {
      * template.
      */
     serviceSpec?: string;
+    /**
+     * Number of replicas in deployment.  May be overridden by
+     * deploymentSpec.
+     */
+    replicas?: number;
 }
 
 /**
@@ -754,7 +759,9 @@ export function deploymentPatch(req: KubeApplication): Partial<Deployment> {
 }
 
 /**
- * Create deployment for a repo and image.
+ * Create deployment for a repo and image.  If the request has a
+ * `deploymentSpec`, it is merged into the patch created by this
+ * function.
  *
  * @param req deployment template request
  * @return deployment resource
@@ -764,33 +771,6 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         environment: req.environment,
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
-    const imagePullSecrets: LocalObjectReference[] = (req.imagePullSecret) ? [{ name: req.imagePullSecret }] : [];
-    let ports: ContainerPort[];
-    let readinessProbe: Probe;
-    let livenessProbe: Probe;
-    if (req.port) {
-        ports = [
-            {
-                name: "http",
-                containerPort: req.port,
-                protocol: "TCP",
-            },
-        ];
-        const probe: Probe = {
-            httpGet: {
-                path: "/",
-                port: "http",
-                scheme: "HTTP",
-            },
-            initialDelaySeconds: 30,
-            timeoutSeconds: 3,
-            periodSeconds: 10,
-            successThreshold: 1,
-            failureThreshold: 3,
-        };
-        readinessProbe = probe;
-        livenessProbe = probe;
-    }
     const d: Deployment = {
         apiVersion: "extensions/v1beta1",
         kind: "Deployment",
@@ -799,7 +779,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
             labels: labels(req),
         },
         spec: {
-            replicas: 1,
+            replicas: (req.replicas || req.replicas === 0) ? req.replicas : 1,
             revisionHistoryLimit: 3,
             selector: {
                 matchLabels: {
@@ -831,14 +811,10 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
                                     memory: "320Mi",
                                 },
                             },
-                            readinessProbe,
-                            livenessProbe,
-                            ports,
                         },
                     ],
                     dnsPolicy: "ClusterFirst",
                     restartPolicy: "Always",
-                    imagePullSecrets,
                 },
             },
             strategy: {
@@ -850,6 +826,32 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
             },
         },
     };
+    if (req.port) {
+        d.spec.template.spec.containers[0].ports = [
+            {
+                name: "http",
+                containerPort: req.port,
+                protocol: "TCP",
+            },
+        ];
+        const probe: Probe = {
+            httpGet: {
+                path: "/",
+                port: "http",
+                scheme: "HTTP",
+            },
+            initialDelaySeconds: 30,
+            timeoutSeconds: 3,
+            periodSeconds: 10,
+            successThreshold: 1,
+            failureThreshold: 3,
+        };
+        d.spec.template.spec.containers[0].readinessProbe = probe;
+        d.spec.template.spec.containers[0].livenessProbe = probe;
+    }
+    if (req.imagePullSecret) {
+        d.spec.template.spec.imagePullSecrets = [{ name: req.imagePullSecret }];
+    }
     if (req.deploymentSpec) {
         try {
             const depSpec: Partial<Deployment> = JSON.parse(req.deploymentSpec);

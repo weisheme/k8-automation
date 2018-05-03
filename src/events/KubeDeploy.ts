@@ -149,8 +149,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                                     logger.error(message);
                                     return { code: 1, message };
                                 });
-                        })
-                        .catch(e => {
+                        }, e => {
                             const msg = `Failed to deploy ${depName} to Kubernetes: ${e.message}`;
                             return failGoal(ctx, sdmGoal, msg);
                         });
