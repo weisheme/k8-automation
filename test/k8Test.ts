@@ -47,18 +47,6 @@ describe("k8", () => {
             };
             const d = deploymentPatch(req);
             const e = {
-                apiVersion: "extensions/v1beta1",
-                kind: "Deployment",
-                metadata: {
-                    name: req.name,
-                    namespace: req.ns,
-                    labels: {
-                        app: req.name,
-                        teamId: req.teamId,
-                        env: req.environment,
-                        creator: "atomist.k8-automation",
-                    },
-                },
                 spec: {
                     template: {
                         spec: {
@@ -87,18 +75,6 @@ describe("k8", () => {
             };
             const d = deploymentPatch(req);
             const e = {
-                apiVersion: "extensions/v1beta1",
-                kind: "Deployment",
-                metadata: {
-                    name: req.name,
-                    namespace: req.ns,
-                    labels: {
-                        app: req.name,
-                        teamId: req.teamId,
-                        env: req.environment,
-                        creator: "atomist.k8-automation",
-                    },
-                },
                 spec: {
                     revisionHistoryLimit: 5,
                     template: {
@@ -191,7 +167,6 @@ describe("k8", () => {
                 kind: "Deployment",
                 metadata: {
                     name: req.name,
-                    namespace: req.ns,
                     labels: {
                         app: req.name,
                         teamId: req.teamId,
@@ -311,7 +286,6 @@ describe("k8", () => {
                 kind: "Service",
                 metadata: {
                     name: req.name,
-                    namespace: req.ns,
                     labels: {
                         creator: "atomist.k8-automation",
                         app: req.name,
@@ -394,7 +368,6 @@ describe("k8", () => {
                 kind: "Ingress",
                 metadata: {
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
                         "nginx.ingress.kubernetes.io/rewrite-target": "/",
@@ -454,7 +427,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -694,7 +666,6 @@ describe("k8", () => {
                         env: "new-wave",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -769,7 +740,6 @@ describe("k8", () => {
                         env: "new-wave",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -846,7 +816,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -903,7 +872,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -1021,7 +989,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -1104,7 +1071,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [
@@ -1155,7 +1121,6 @@ describe("k8", () => {
                         creator: "atomist.k8-automation",
                     },
                     name: "atm-ingress",
-                    namespace: "hounds-of-love",
                 },
                 spec: {
                     rules: [

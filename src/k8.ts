@@ -729,13 +729,6 @@ function labels(req: KubeApplication): { [key: string]: string } {
  */
 export function deploymentPatch(req: KubeApplication): Partial<Deployment> {
     const patch: Partial<Deployment> = {
-        apiVersion: "extensions/v1beta1",
-        kind: "Deployment",
-        metadata: {
-            name: req.name,
-            namespace: req.ns,
-            labels: labels(req),
-        },
         spec: {
             template: {
                 spec: {
@@ -803,7 +796,6 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         kind: "Deployment",
         metadata: {
             name: req.name,
-            namespace: req.ns,
             labels: labels(req),
         },
         spec: {
@@ -881,7 +873,6 @@ export function serviceTemplate(req: KubeApplication): Service {
         apiVersion: "v1",
         metadata: {
             name: req.name,
-            namespace: req.ns,
             labels: labels(req),
         },
         spec: {
@@ -965,7 +956,6 @@ export function ingressTemplate(req: KubeApplication): Ingress {
         apiVersion: "extensions/v1beta1",
         metadata: {
             name: ingressName,
-            namespace: req.ns,
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/",
