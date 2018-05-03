@@ -20,6 +20,7 @@ subscription SdmGoalSub {
     state
     externalKey
     goalSet
+    goalSetId
     ts
     error
     retryFeasible
