@@ -562,8 +562,14 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
     return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(dep => {
-            logger.debug(`Updating deployment ${slug} using ${req.image}`);
-            const patch = deploymentPatch(req);
+            let patch: Partial<Deployment>;
+            try {
+                patch = deploymentPatch(req);
+            } catch (e) {
+                logger.error(e.message);
+                return Promise.reject(e);
+            }
+            logger.debug(`Updating deployment ${slug} using '${stringify(patch)}'`);
             return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
                 `patch deployment ${slug}`);
         }, e => {
@@ -575,6 +581,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 logger.error(e.message);
                 return Promise.reject(e);
             }
+            logger.debug(`Create deployment ${slug} using '${stringify(dep)}'`);
             return retryP(() => req.ext.namespaces(req.ns).deployments.post({ body: dep }),
                 `create deployment ${slug}`);
         });
