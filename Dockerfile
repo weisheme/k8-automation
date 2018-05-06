@@ -22,6 +22,10 @@ ENTRYPOINT ["dumb-init", "node", "--trace-warnings", "--expose_gc", "--optimize_
 
 CMD ["node_modules/@atomist/automation-client/start.client.js"]
 
-COPY . .
+RUN npm install -g npm@6.0.0
 
-RUN npm install --only=production
+COPY package.json package-lock.json ./
+
+RUN npm ci --only=production
+
+COPY . .

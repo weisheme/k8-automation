@@ -3,11 +3,10 @@
 .vscode/
 **/*~
 **/.#*
-.dockerignore
 .git*
 .npm*
 .travis.yml
-.atomist/kube/
+.atomist/
 assets/kube/
 assets/kubernetes-client/
 node_modules/
