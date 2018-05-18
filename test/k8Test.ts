@@ -224,7 +224,7 @@ describe("k8", () => {
             };
             const d = deploymentTemplate(req);
             const e = {
-                apiVersion: "extensions/v1beta1",
+                apiVersion: "apps/v1beta2",
                 kind: "Deployment",
                 metadata: {
                     name: req.name,
@@ -341,7 +341,7 @@ describe("k8", () => {
             };
             const d = deploymentTemplate(req);
             const e = {
-                apiVersion: "extensions/v1beta1",
+                apiVersion: "apps/v1beta2",
                 kind: "Deployment",
                 metadata: {
                     name: req.name,
@@ -456,7 +456,7 @@ describe("k8", () => {
             };
             const d = deploymentTemplate(req);
             const e = {
-                apiVersion: "extensions/v1beta1",
+                apiVersion: "apps/v1beta2",
                 kind: "Deployment",
                 metadata: {
                     name: req.name,

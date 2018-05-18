@@ -29,6 +29,31 @@ import promiseRetry = require("promise-retry");
 import { preErrMsg } from "./error";
 
 /**
+ * Get Kubernetes configuration either from the creds directory or the
+ * in-cluster client.
+ */
+export function getKubeConfig(): k8.ClusterConfiguration | k8.ClientConfiguration {
+    let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
+    const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
+    try {
+        const kubeconfig = k8.config.loadKubeconfig(cfgPath);
+        k8Config = k8.config.fromKubeconfig(kubeconfig);
+    } catch (e) {
+        logger.debug(`failed to use ${cfgPath}: ${e.message}`);
+        try {
+            k8Config = k8.config.getInCluster();
+        } catch (er) {
+            logger.debug(`failed to use in-cluster-config: ${er.message}`);
+            er.message = "Failed to use either kubeconfig or in-cluster-config, will not deploy: " +
+                `${e.message}; ${er.message}`;
+            logger.error(er.message);
+            throw er;
+        }
+    }
+    return k8Config;
+}
+
+/**
  * Kubernetes configuration to use to create API clients.
  */
 export interface KubeConfig {
@@ -44,6 +69,18 @@ export interface KubeClients {
     core: k8.ApiGroup;
     /** Kubernetes Extension client */
     ext: k8.ApiGroup;
+    /** Kubernetes Apps client */
+    apps: k8.ApiGroup;
+}
+
+/**
+ * Create the KubeClients structure.
+ */
+function getKubeClients(config: k8.ClusterConfiguration | k8.ClientConfiguration): KubeClients {
+    const core = new k8.Core(config);
+    const ext = new k8.Extensions(config);
+    const apps = new k8.Apps(config);
+    return { core, ext, apps };
 }
 
 /**
@@ -149,9 +186,8 @@ function reqFilter<T>(k: string, v: T): T {
  */
 export function upsertApplication(upReq: KubeApplicationRequest): Promise<void> {
 
-    const core = new k8.Core(upReq.config);
-    const ext = new k8.Extensions(upReq.config);
-    const req = { ...upReq, core, ext };
+    const clients = getKubeClients(upReq.config);
+    const req = { ...upReq, ...clients };
     const reqStr = stringify(req, reqFilter);
 
     return upsertNamespace(req)
@@ -169,9 +205,8 @@ export function upsertApplication(upReq: KubeApplicationRequest): Promise<void> 
  * @param req delete application request object
  */
 export function deleteApplication(delReq: KubeDeleteRequest): Promise<void> {
-    const core = new k8.Core(delReq.config);
-    const ext = new k8.Extensions(delReq.config);
-    const req = { ...delReq, core, ext };
+    const clients = getKubeClients(delReq.config);
+    const req = { ...delReq, ...clients };
     const reqStr = stringify(req, reqFilter);
     const slug = `${req.ns}/${req.name}`;
 
@@ -371,7 +406,7 @@ export interface PodTemplate {
 }
 
 export interface Deployment {
-    apiVersion: "extensions/v1beta1";
+    apiVersion: "apps/v1beta2";
     kind: "Deployment";
     metadata?: Metadata;
     spec?: {
@@ -567,7 +602,7 @@ function upsertService(req: KubeResourceRequest): Promise<void> {
  */
 function upsertDeployment(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
-    return req.ext.namespaces(req.ns).deployments(req.name).get()
+    return req.apps.namespaces(req.ns).deployments(req.name).get()
         .then(dep => {
             let patch: Partial<Deployment>;
             try {
@@ -577,7 +612,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 return Promise.reject(e);
             }
             logger.debug(`Updating deployment ${slug} using '${stringify(patch)}'`);
-            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
+            return retryP(() => req.apps.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
                 `patch deployment ${slug}`);
         }, e => {
             logger.debug(`Failed to get deployment ${slug}, creating: ${e.message}`);
@@ -589,7 +624,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 return Promise.reject(e);
             }
             logger.debug(`Creating deployment ${slug} using '${stringify(dep)}'`);
-            return retryP(() => req.ext.namespaces(req.ns).deployments.post({ body: dep }),
+            return retryP(() => req.apps.namespaces(req.ns).deployments.post({ body: dep }),
                 `create deployment ${slug}`);
         });
 }
@@ -653,10 +688,10 @@ function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
  */
 function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
-    return req.ext.namespaces(req.ns).deployments(req.name).get()
+    return req.apps.namespaces(req.ns).deployments(req.name).get()
         .then(() => {
             const body = { propagationPolicy: "Background" };
-            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).delete({ body }),
+            return retryP(() => req.apps.namespaces(req.ns).deployments(req.name).delete({ body }),
                 `delete deployment ${slug}`);
         }, e => logger.debug(`Deployment ${slug} does not exist: ${e.message}`));
 }
@@ -775,7 +810,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
     const d: Deployment = {
-        apiVersion: "extensions/v1beta1",
+        apiVersion: "apps/v1beta2",
         kind: "Deployment",
         metadata: {
             name: req.name,

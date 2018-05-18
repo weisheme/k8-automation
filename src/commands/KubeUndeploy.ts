@@ -34,6 +34,7 @@ import * as path from "path";
 import { preErrMsg } from "../error";
 import {
     deleteApplication,
+    getKubeConfig,
     KubeDeleteRequest,
 } from "../k8";
 
@@ -104,25 +105,14 @@ export class KubeUndeploy implements HandleCommand {
     public handle(ctx: HandlerContext): Promise<HandlerResult> {
 
         let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
-        const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
         try {
-            const kubeconfig = k8.config.loadKubeconfig(cfgPath);
-            k8Config = k8.config.fromKubeconfig(kubeconfig);
+            k8Config = getKubeConfig();
         } catch (e) {
-            logger.debug(`failed to use ${cfgPath}: ${e.message}`);
-            try {
-                k8Config = k8.config.getInCluster();
-            } catch (er) {
-                logger.debug(`failed to use in-cluster-config: ${er.message}`);
-                const message = "Failed to use either kubeconfig or in-cluster-config, will not deploy: " +
-                    `${e.message}; ${er.message}`;
-                logger.error(message);
-                return ctx.messageClient.respond(message)
-                    .then(() => ({ code: Failure.code, message }), err => {
-                        const msg = `Failed to send response message: ${err.message}`;
-                        return { code: Failure.code, message: `${message}; ${msg}` };
-                    });
-            }
+            return ctx.messageClient.respond(e.message)
+                .then(() => ({ code: Failure.code, message: e.message }), err => {
+                    const msg = `Failed to send response message: ${err.message}`;
+                    return { code: Failure.code, message: `${e.message}; ${msg}` };
+                });
         }
 
         const req: KubeDeleteRequest = {

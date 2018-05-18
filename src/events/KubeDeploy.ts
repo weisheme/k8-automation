@@ -38,6 +38,7 @@ import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
 import * as path from "path";
 import {
+    getKubeConfig,
     KubeApplication,
     KubeApplicationRequest,
     upsertApplication,
@@ -81,20 +82,10 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                     logger.debug(`Processing ${depName}`);
 
                     let k8Config: k8.ClusterConfiguration | k8.ClientConfiguration;
-                    const cfgPath = path.join(appRoot.path, "..", "creds", "kube", "config");
                     try {
-                        const kubeconfig = k8.config.loadKubeconfig(cfgPath);
-                        k8Config = k8.config.fromKubeconfig(kubeconfig);
+                        k8Config = getKubeConfig();
                     } catch (e) {
-                        logger.debug(`Failed to use ${cfgPath}: ${e.message}`);
-                        try {
-                            k8Config = k8.config.getInCluster();
-                        } catch (er) {
-                            logger.debug(`Failed to use in-cluster-config: ${er.message}`);
-                            const msg = `Failed to use either kubeconfig or in-cluster-config, will not deploy ` +
-                                `${depName} to Kubernetes ${e.message};${er.message}`;
-                            return failGoal(ctx, sdmGoal, msg);
-                        }
+                        return failGoal(ctx, sdmGoal, e.message);
                     }
 
                     if (!sdmGoal.data) {
