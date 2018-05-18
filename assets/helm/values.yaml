@@ -1,0 +1,125 @@
+# Default values for k8-automation.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## The default values here are suitable for minikube installation.
+
+## Automation client settings, see
+## https://atomist.github.io/automation-client-ts/interfaces/_configuration_.configuration.html
+
+# secret holds the automation client configuration that will be
+# created and provided to k8-automation as a secret, the secret
+# settings will override any settings in config
+secret:
+  # token is a valid Atomist token, required
+  token:
+
+# config holds the automation client configuration that is not
+# sensitive, it will be created and provided to k8-automation as a
+# config map, settings in secret take precedence over config values
+config:
+  # teamIds is an array of Atomist workspace/team IDs, must be a
+  # set to a non-zero-length array unless you are internal Atomist and
+  # running a global automation
+  teamIds:
+
+  # environment is an arbitrary string used in logs to help you
+  # distinguish where the automation is running
+  environment: kubernetes
+
+  # policy is either "durable" for production systems or "ephemeral"
+  # when testing
+  policy: ephemeral
+
+  # ws is the automation client websocket settings
+  ws:
+    # termination are the websocket termination settings
+    termination:
+      # graceful says whether to give in-flight transactions time to
+      # complete before exiting
+      graceful: true
+
+  # applicationEvents configures whether and where client start/stop
+  # events should be sent
+  #applicationEvents:
+    # enabled says whether to send application events or not, default
+    # is false
+    #enabled: true
+    # teamId says where to send the application events, if should be
+    # set if enabled is true
+    #teamId:
+
+  # cluster sets the cluster configuration
+  cluster:
+    # enabled turns clustering on if `true`
+    enabled: true
+    # workers configures how many workers to spin up
+    workers: 2
+
+  # statsd settings
+  statsd:
+    # enabled if true sends statsd metrics
+    enabled: false
+    # host to send statsd metrics to
+    host: localhost
+    # port to send statsd metrics to
+    port: 8125
+
+  # groups is for internal Atomist use, do not set, use teamIds
+  #groups:
+
+## Docker image settings
+
+# image has information on what image to start up in the pod container
+image:
+  repository: atomist/k8-automation
+  # tag of image to use, if not set, Chart.AppVersion will be used
+  tag:
+  pullPolicy: IfNotPresent
+
+## Deployment spec values, these values have the same meaning as in a
+## deployment spec
+replicas: 1
+
+revisionHistoryLimit: 3
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 384Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+terminationGracePeriodSeconds: 30
+
+dnsPolicy: ClusterFirst
+
+restartPolicy: Always
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+## RBAC values
+rbac:
+  # create RBAC resources, set to false if you will create the RBAC
+  # resources yourself
+  create: true
+
+# serviceAccount values
+serviceAccount:
+  # create service account, set to false if you will create the
+  # service account yourself
+  create: true
+  # name of the service account, if not set and create is true, a name
+  # is generated using the fullname template
+  name:

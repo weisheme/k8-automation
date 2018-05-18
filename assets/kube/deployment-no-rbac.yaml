@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: k8-automation
-        image: atomist/k8-automation:0.7.3
+        image: atomist/k8-automation:0.8.0
         imagePullPolicy: IfNotPresent
         env:
         - name: ATOMIST_CONFIG
@@ -63,7 +63,7 @@ spec:
             cpu: 100m
             memory: 256Mi
       restartPolicy: Always
-      terminationGracePeriodSeconds: 180
+      terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst
   strategy:
     type: RollingUpdate

@@ -7,13 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][]
 
-[Unreleased]: https://github.com/atomist/k8-automation/compare/0.7.4...HEAD
+[Unreleased]: https://github.com/atomist/k8-automation/compare/0.8.0...HEAD
 
-## [0.7.4][] - 2018-05-01
+## [0.8.0][] - 2018-05-18
 
-[0.7.4]: https://github.com/atomist/k8-automation/compare/0.7.3...0.7.4
+[0.8.0]: https://github.com/atomist/k8-automation/compare/0.7.3...0.8.0
 
-Patch release
+Helm release
 
 ### Fixed
 
@@ -24,6 +24,7 @@ Patch release
 ### Added
 
 -   Support replicas in SDM goal data
+-   Helm charts
 
 ## [0.7.3][] - 2018-05-01
 

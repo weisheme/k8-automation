@@ -95,9 +95,20 @@ Atomist, Slack, and GitHub.
 ## Running
 
 The best way to run k8-automation is within the Kubernetes cluster
-where you want it to manage deployments.  You can use the Kubernetes
-resource files in the [kube directory][kube] as a starting point for
-deploying this automation in your Kubernetes cluster.
+where you want it to manage deployments.  You will need to provide
+your Atomist team/workspace ID and a valid [GitHub personal access
+token][ghpat].  You can get your Atomist team/workspace ID(s) from the
+settings page of your Atomist workspace or by sending `team` as a
+message to the Atomist bot, e.g., `@atomist team`, in Slack.  The
+`token` should be a GitHub personal access token with `read:org` _and_
+`repo` scopes.  In the commands below, replace `TEAM_ID` and `TOKEN`
+as appropriate.
+
+### `kubectl`
+
+You can use the Kubernetes resource files in the [kube
+directory][kube] as a starting point for deploying this automation in
+your Kubernetes cluster.
 
 k8-automation needs write access to service, deployment, and ingress
 resources in your Kubernetes cluster to operate properly.  It uses the
@@ -112,12 +123,7 @@ sufficient permissions to run k8-automation.
 
 Before deploying either with or without RBAC, you will need to create
 a namespace for the k8-automation resources and a secret with the
-k8-automation configuration.  The only required configuration values
-are the `teamIds` and `token`.  The `teamIds` should be your Atomist
-team ID(s), which you can get from the settings page for your Atomist
-workspace or by sending `team` as a message to the Atomist bot, e.g.,
-`@atomist team`, in Slack.  The `token` should be a [GitHub personal
-access token][ghpat] with `read:org` and `repo` scopes.
+k8-automation configuration.
 
 ```console
 $ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kube/namespace.yaml
@@ -133,7 +139,7 @@ and `TOKEN` with your GitHub token.
 [gke-rbac]: https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control (GKE RBAC)
 [ghpat]: https://github.com/settings/tokens (GitHub Personal Access Tokens)
 
-### RBAC
+#### RBAC
 
 If your Kubernetes cluster uses RBAC (minikube does), you can deploy with the
 following commands
@@ -169,7 +175,7 @@ $ kubectl create clusterrolebinding cluster-admin-binding --clusterrole cluster-
 
 Then run the command to create the `kube/rbac.yaml` resources again.
 
-### Without RBAC
+#### Without RBAC
 
 To deploy on clusters without RBAC, run the following commands
 
@@ -181,6 +187,22 @@ If the logs from the k8-automation pod have lines indicating a failure
 to create, patch, or delete Kubernetes resources, then the default
 service account does not have read permissions to pods and you likely
 need to deploy using RBAC.
+
+### Helm
+
+If your Kubernetes cluster supports RBAC and installing resource using
+[Helm][helm], you can install/update with the following command,
+replacing `TEAM_ID` with your Atomist team/workspace ID and `TOKEN`
+with your GitHub personal access token.
+
+
+```console
+$ helm upgrade --install --namespace=k8-automation k8-automation \
+    --set=secret.token="TOKEN" --set=config.teamIds="{ATOMIST_TEAM_ID}" \
+    https://raw.githubusercontent.com/atomist/k8-automation/master/assets/helm/
+```
+
+[helm]: https://helm.sh/ (Helm Package Manager for Kubernetes)
 
 ## SDM interface
 
