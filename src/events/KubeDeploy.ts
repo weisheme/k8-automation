@@ -25,8 +25,8 @@ import {
     reduceResults,
     Success,
     Tags,
+    Value,
 } from "@atomist/automation-client";
-import { automationClientInstance } from "@atomist/automation-client/automationClient";
 import {
     updateGoal,
     UpdateSdmGoalParams,
@@ -55,6 +55,9 @@ export interface CommitForSdmGoal {
 @Tags("deploy", "kubernetes")
 export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
 
+    @Value("environment")
+    private environment: string;
+
     public handle(ev: EventFired<SdmGoalSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
         return Promise.all(ev.data.SdmGoal.map(g => {
@@ -71,7 +74,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                     const owner = g.repo.owner;
                     const sha = g.sha;
                     const teamId = ctx.teamId;
-                    const env = automationClientInstance().configuration.environment;
+                    const env = this.environment;
                     const depName = `${teamId}:${env}:${owner}:${repo}:${sha}`;
                     if (!commit.image) {
                         const msg = `Kubernetes deploy requested for ${depName} but that commit ` +

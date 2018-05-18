@@ -15,8 +15,7 @@
  */
 
 import { Configuration } from "@atomist/automation-client";
-
-import { configureLogzio } from "./util/logzio";
+import { configureLogzio } from "@atomist/automation-client-ext-logzio";
 
 export const configuration: Configuration = {
     postProcessors: [configureLogzio],

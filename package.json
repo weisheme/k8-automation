@@ -18,7 +18,8 @@
     "kubernetes"
   ],
   "dependencies": {
-    "@atomist/automation-client": "^0.14.1",
+    "@atomist/automation-client": "https://r.atomist.com/BJxzuM1V20G",
+    "@atomist/automation-client-ext-logzio": "0.1.0-20180518141306",
     "@atomist/sdm": "https://r.atomist.com/r1NJweUdaz",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
@@ -78,8 +79,8 @@
     "lint": "tslint --format verbose --project . --exclude \"{build,node_modules}/**\" \"**/*.ts\"",
     "lint:fix": "npm run lint -- --fix",
     "start": "atomist start --no-install --no-compile",
-    "test": "mocha --require espower-typescript/guess \"test/**/*.ts\"",
-    "test:one": "mocha --require espower-typescript/guess \"test/**/${TEST:-*.ts}\"",
+    "test": "mocha --exit --require espower-typescript/guess \"test/**/*.ts\"",
+    "test:one": "mocha --exit --require espower-typescript/guess \"test/**/${TEST:-*.ts}\"",
     "typedoc": "typedoc --mode modules --excludeExternals --out build/typedoc src"
   },
   "engines": {
