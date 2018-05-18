@@ -19,8 +19,8 @@
   ],
   "dependencies": {
     "@atomist/automation-client": "https://r.atomist.com/BJxzuM1V20G",
-    "@atomist/automation-client-ext-logzio": "0.1.0-20180518141306",
-    "@atomist/sdm": "https://r.atomist.com/r1NJweUdaz",
+    "@atomist/automation-client-ext-logzio": "https://r.atomist.com/BJvleYiC20f",
+    "@atomist/sdm": "https://r.atomist.com/B1IW6KqC3Cf",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
     "kubernetes-client": "^4.0.0",
