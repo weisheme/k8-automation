@@ -406,7 +406,7 @@ export interface PodTemplate {
 }
 
 export interface Deployment {
-    apiVersion: "apps/v1beta2";
+    apiVersion: "apps/v1beta1";
     kind: "Deployment";
     metadata?: Metadata;
     spec?: {
@@ -810,7 +810,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
     const d: Deployment = {
-        apiVersion: "apps/v1beta2",
+        apiVersion: "apps/v1beta1",
         kind: "Deployment",
         metadata: {
             name: req.name,
