@@ -1,7 +1,6 @@
 # @atomist/k8-automation
 
 [![npm version](https://badge.fury.io/js/%40atomist%2Fk8-automation.svg)](https://badge.fury.io/js/%40atomist%2Fk8-automation)
-[![Build Status](https://travis-ci.org/atomist/k8-automation.svg?branch=master)](https://travis-ci.org/atomist/k8-automation)
 [![Docker Pulls](https://img.shields.io/docker/pulls/atomist/k8-automation.svg)](https://hub.docker.com/r/atomist/k8-automation/)
 
 This repository contains automations for deploying applications to
@@ -359,8 +358,10 @@ Command | Reason
 
 ### Release
 
-Releases are managed by the SDM.  Press the "Release" button in Slack
-or the Atomist dashboard.
+Releases are managed by the [Atomist SDM][atomist-sdm].  Press the
+"Release" button in the Atomist dashboard or Slack.
+
+[atomist-sdm]: https://github.com/atomist/atomist-sdm (Atomist Software Delivery Machine)
 
 ---
 
