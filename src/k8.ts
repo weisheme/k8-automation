@@ -406,7 +406,7 @@ export interface PodTemplate {
 }
 
 export interface Deployment {
-    apiVersion: "apps/v1beta1";
+    apiVersion: "extensions/v1beta1";
     kind: "Deployment";
     metadata?: Metadata;
     spec?: {
@@ -602,7 +602,7 @@ function upsertService(req: KubeResourceRequest): Promise<void> {
  */
 function upsertDeployment(req: KubeResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
-    return req.apps.namespaces(req.ns).deployments(req.name).get()
+    return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(dep => {
             let patch: Partial<Deployment>;
             try {
@@ -612,7 +612,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 return Promise.reject(e);
             }
             logger.debug(`Updating deployment ${slug} using '${stringify(patch)}'`);
-            return retryP(() => req.apps.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
+            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).patch({ body: patch }),
                 `patch deployment ${slug}`);
         }, e => {
             logger.debug(`Failed to get deployment ${slug}, creating: ${e.message}`);
@@ -624,7 +624,7 @@ function upsertDeployment(req: KubeResourceRequest): Promise<void> {
                 return Promise.reject(e);
             }
             logger.debug(`Creating deployment ${slug} using '${stringify(dep)}'`);
-            return retryP(() => req.apps.namespaces(req.ns).deployments.post({ body: dep }),
+            return retryP(() => req.ext.namespaces(req.ns).deployments.post({ body: dep }),
                 `create deployment ${slug}`);
         });
 }
@@ -688,10 +688,10 @@ function deleteService(req: KubeDeleteResourceRequest): Promise<void> {
  */
 function deleteDeployment(req: KubeDeleteResourceRequest): Promise<void> {
     const slug = `${req.ns}/${req.name}`;
-    return req.apps.namespaces(req.ns).deployments(req.name).get()
+    return req.ext.namespaces(req.ns).deployments(req.name).get()
         .then(() => {
             const body = { propagationPolicy: "Background" };
-            return retryP(() => req.apps.namespaces(req.ns).deployments(req.name).delete({ body }),
+            return retryP(() => req.ext.namespaces(req.ns).deployments(req.name).delete({ body }),
                 `delete deployment ${slug}`);
         }, e => logger.debug(`Deployment ${slug} does not exist: ${e.message}`));
 }
@@ -810,7 +810,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
         webhooks: [`${webhookBaseUrl()}/atomist/kube/teams/${req.teamId}`],
     });
     const d: Deployment = {
-        apiVersion: "apps/v1beta1",
+        apiVersion: "extensions/v1beta1",
         kind: "Deployment",
         metadata: {
             name: req.name,
