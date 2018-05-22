@@ -1143,7 +1143,7 @@ function retryP<T>(
     k: () => Promise<T>,
     desc: string,
     options = defaultRetryOptions,
-): Promise<T> {
+): Promise<T | void> {
 
     return promiseRetry(defaultRetryOptions, (retry, count) => {
         logger.debug(`Retry ${desc} attempt ${count}`);

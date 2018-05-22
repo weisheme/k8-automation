@@ -56,7 +56,14 @@ export interface CommitForSdmGoal {
 export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
 
     @Value("environment")
-    private environment: string;
+    public environment: string;
+
+    /** cluster or namespace mode, default is cluster */
+    @Value("kubernetes.mode")
+    public mode: "cluster" | "namespace";
+
+    @Value("kubernetes.namespaces")
+    public namespaces: string[];
 
     public handle(ev: EventFired<SdmGoalSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
 
@@ -91,34 +98,14 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                         return failGoal(ctx, sdmGoal, e.message);
                     }
 
-                    if (!sdmGoal.data) {
-                        const msg = `SDM goal data property is false for ${depName}, cannot deploy: ` +
-                            `'${stringify(sdmGoal)}'`;
-                        return failGoal(ctx, sdmGoal, msg);
-                    }
-                    let sdmData: any;
+                    let kubeApp: KubeApplication;
                     try {
-                        sdmData = JSON.parse(sdmGoal.data);
+                        kubeApp = validateSdmGoal(sdmGoal, this);
                     } catch (e) {
-                        const msg = `Failed to parse SDM goal data '${sdmGoal.data}' as JSON for ${depName}: ` +
-                            e.message;
+                        const msg = `${depName} ${e.message}`;
                         return failGoal(ctx, sdmGoal, msg);
                     }
-                    if (!sdmData.kubernetes) {
-                        const msg = `SDM goal data kuberenetes property is false for ${depName}, cannot deploy: ` +
-                            `'${stringify(sdmData)}'`;
-                        return failGoal(ctx, sdmGoal, msg);
-                    }
-                    const kubeApp: KubeApplication = sdmData.kubernetes;
-                    if (!kubeApp.name) {
-                        const msg = `SDM goal data kuberenetes name property is false for ${depName}, cannot deploy: ` +
-                            `'${stringify(sdmData)}'`;
-                        return failGoal(ctx, sdmGoal, msg);
-                    }
-                    kubeApp.ns = kubeApp.ns || "default";
-                    if (kubeApp.environment !== env) {
-                        logger.info(`SDM goal data kuberenetes environment '${kubeApp.environment}' is not this ` +
-                            `environment '${env}'`);
+                    if (!kubeApp) {
                         return Success;
                     }
 
@@ -155,6 +142,7 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
         }))
             .then(results => reduceResults(results));
     }
+
 }
 
 /**
@@ -180,6 +168,58 @@ export function eligibleDeployGoal(goal: SdmGoal, commit: CommitForSdmGoal): Han
         return { code: 1, message: `SDM goal state '${goal.state}' is not 'requested'` };
     }
     return Success;
+}
+
+/**
+ * Validate the SDM goal has all necessary data.  It will throw an
+ * Error if the goal is invalid in some way.  It will return undefined
+ * if nothing should be deployed.
+ *
+ * @param sdmGoal SDM goal for Kubernetes application deployment
+ * @return valid KubeApplication if something should be deployed,
+ *         undefined if nothing should be deployed
+ */
+export function validateSdmGoal(sdmGoal: SdmGoal, kd: KubeDeploy): KubeApplication {
+    if (!sdmGoal.data) {
+        throw new Error(`SDM goal data property is false, cannot deploy: '${stringify(sdmGoal)}'`);
+    }
+    let sdmData: any;
+    try {
+        sdmData = JSON.parse(sdmGoal.data);
+    } catch (e) {
+        e.message = `Failed to parse SDM goal data '${sdmGoal.data}' as JSON: ${e.message}`;
+        throw e;
+    }
+    if (!sdmData.kubernetes) {
+        throw new Error(`SDM goal data kubernetes property is false, cannot deploy: '${stringify(sdmData)}'`);
+    }
+    const kubeApp: KubeApplication = sdmData.kubernetes;
+    if (!kubeApp.name) {
+        throw new Error(`SDM goal data kubernetes name property is false, cannot deploy: '${stringify(sdmData)}'`);
+    }
+    if (kubeApp.environment !== kd.environment) {
+        logger.info(`SDM goal data kubernetes environment '${kubeApp.environment}' is not this ` +
+            `environment '${kd.environment}'`);
+        return undefined;
+    }
+    kubeApp.ns = kubeApp.ns || "default";
+    kd.mode = kd.mode || "cluster";
+    const podNs = process.env.POD_NAMESPACE;
+    if (kd.mode === "cluster") {
+        if (kd.namespaces && !kd.namespaces.includes(kubeApp.ns)) {
+            logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not in managed ` +
+                `namespaces '${kd.namespaces.join(",")}'`);
+            return undefined;
+        }
+    } else if (!podNs) {
+        throw new Error(`Kubernetes deploy requested but k8-automation is running in ` +
+            `namespace-scoped mode and the POD_NAMESPACE environment variable is not set`);
+    } else if (kubeApp.ns !== podNs) {
+        logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not the name as ` +
+            `k8-automation running in namespace-scoped mode '${podNs}'`);
+        return undefined;
+    }
+    return kubeApp;
 }
 
 /**

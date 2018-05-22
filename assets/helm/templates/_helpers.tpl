@@ -49,7 +49,10 @@ Check to make sure all required values are set.
 {{- if not .Values.secret.token -}}
 {{- required "You must supply a secret.token" .Values.secret.token -}}
 {{- end -}}
-{{- if (not .Values.config.teamIds) and (not .Values.config.groups) -}}
+{{- if and (not .Values.config.teamIds) (not .Values.config.groups) -}}
 {{- required "You must supply at least one Atomist team ID or, less likely, group" .Values.config.teamIds -}}
+{{- end -}}
+{{- if and (not (eq .Values.config.kubernetes.mode "cluster")) (not (eq .Values.config.kubernetes.mode "namespace")) -}}
+{{- required (printf "Kubernetes mode (.Values.config.kubernetes.mode=%s) must be either 'cluster' or 'namespace'" .Values.config.kubernetes.mode) nil -}}
 {{- end -}}
 {{- end -}}
