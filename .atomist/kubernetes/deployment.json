@@ -7,8 +7,16 @@
           {
             "env": [
               {
-                "name": "ATOMIST_ENV",
+                "name": "NODE_ENV",
                 "value": "production"
+              },
+              {
+                "name": "POD_NAMESPACE",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.namespace"
+                  }
+                }
               },
               {
                 "name": "ATOMIST_CONFIG_PATH",
@@ -42,11 +50,11 @@
             "resources": {
               "limits": {
                 "cpu": "500m",
-                "memory": "512Mi"
+                "memory": "384Mi"
               },
               "requests": {
                 "cpu": "100m",
-                "memory": "384Mi"
+                "memory": "256Mi"
               }
             },
             "volumeMounts": [

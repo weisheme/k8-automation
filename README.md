@@ -20,33 +20,20 @@ delivery machine.
 
 Below are brief instructions on how to get started running this
 project yourself.  If you just want to use the functionality this
-project provides, see the [Atomist documentation][docs].  For more
-detailed information on developing automations, see
-the [Atomist Developer Guide][dev].
+project provides, see the [Atomist documentation][docs].
 
 [docs]: https://docs.atomist.com/ (Atomist User Guide)
-[dev]: https://docs.atomist.com/developer/ (Atomist Developer Guide)
-
-### GitHub account
-
-You must have a GitHub account, either GitHub.com or GitHub Enterprise
-(GHE).  If you want to use Atomist with GHE, please [contact
-Atomist](mailto:support@atomist.com).  The remainder of these
-instructions assume you have a GitHub.com account.  If you do not
-already have a GitHub.com account, you can [create
-one][github-create].
-
-[github-create]: https://github.com/join (Join GitHub)
 
 ### Atomist workspace
 
-You also need to sign up with Atomist and create a workspace.  Once
-you have a GitHub.com account, you can sign up with Atomist at
-[https://app.atomist.com/][atm-app].  Once you are registered with
-Atomist, you can create an Atomist workspace and add your GitHub user
-and/or organizations to that workspace.
+You need an Atomist workspace.  If you do not already have an Atomist
+workspace, you can sign up with Atomist at
+[https://app.atomist.com/][atm-app].  See the [Atomist User
+Guide][atm-user] for detailed instructions on how to sign up with
+Atomist.
 
 [atm-app]: https://app.atomist.com/ (Atomist Web Interface)
+[atm-user]: https://docs.atomist.com/user/ (Atomist User Guide)
 
 ### Kubernetes
 
@@ -68,37 +55,22 @@ $ minikube addons enable ingress
 [ingress-nginx]: https://github.com/kubernetes/ingress-nginx (Ingress nginx)
 [minikube]: https://kubernetes.io/docs/getting-started-guides/minikube/ (Minikube)
 
-### Slack
+## Configuration
 
-Atomist has a powerful [Slack][slackhq] application, allowing you to
-see and act on your development activity right in Slack.  Slack is
-_not_ a requirement for using Atomist, but if you try it, you'll
-probably like it.  If you do not have access to a Slack team, it is
-easy to [create your own][slack-team].
-
-In your Slack team, install the Atomist app in Slack, click the button
-below.
-
-<p align="center">
- <a href="https://atm.st/2wiDlUe">
-  <img alt="Add to Slack" height="50" width="174" src="https://platform.slack-edge.com/img/add_to_slack@2x.png" />
- </a>
-</p>
-
-Once installed, the Atomist bot will guide you through connecting
-Atomist, Slack, and GitHub.
-
-[slackhq]: https://slack.com/ (Slack)
-[slack-team]: https://slack.com/get-started#create (Create a Slack Team)
+You can run k8-automation in either "cluster-wide" mode or
+"namespace-scoped" mode.  In cluster-wide mode, k8-automation is able
+to deploy and update applications in any namespace but it requires a
+user with cluster-admin role privileges to install it.  If you only
+have access to admin role privileges in a namespace, you can install
+k8-automation in namespace-scoped mode, where it will only be able to
+deploy and update resources in that namespace.
 
 ## Running
 
 See the [Atomist Kubernetes documentation][atomist-kube] for detailed
 instructions on getting k8-automation running in your cluster.
-Briefly, if you already have an [Atomist
-workspace][atomist-getting-started], you can run the following
-commands to get all the needed Atomist utilities, including
-k8-automation, installed in your Kubernetes cluster.  Replace
+Briefly, you can run the following commands to get k8-automation
+running in cluster-wide mode in your Kubernetes cluster.  Replace
 `WORKSPACE_ID` with your Atomist workspace/team ID and `TOKEN` with a
 GitHub token with "read:org" scopes for a user within the GitHub
 organization linked to your Atomist workspace.

@@ -27,6 +27,7 @@ Helm release
 -   Helm charts
 -   Support for TLS secrets in ingress
 -   URL when updating goal status
+-   Support to run in and only deploy to specific namespaces
 
 ## [0.7.3][] - 2018-05-01
 
