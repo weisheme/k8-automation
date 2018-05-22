@@ -9,7 +9,6 @@
 .atomist/
 assets/helm/
 assets/kube/
-assets/kubernetes-client/
 node_modules/
 build/test/
 build/typedoc/

@@ -9,7 +9,6 @@
 .travis.yml
 /assets/helm/
 /assets/kube/
-/assets/kubernetes-client/
 /build/
 /config/
 /scripts/
