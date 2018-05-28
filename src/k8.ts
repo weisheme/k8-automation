@@ -121,6 +121,8 @@ export interface KubeApplication {
     host?: string;
     /** Ingress protocol, "http" or "https", default is "http" */
     protocol?: "http" | "https";
+    /** Name of TLS secret for host */
+    tlsSecret?: string;
     /**
      * Stringified patch of a deployment spec for this application
      * that is parsed and overlaid on top of the default deployment
@@ -1011,6 +1013,16 @@ export function ingressTemplate(req: KubeApplication): Ingress {
             rules: [rule],
         },
     };
+    if (req.tlsSecret) {
+        i.spec.tls = [
+            {
+                secretName: req.tlsSecret,
+            },
+        ];
+        if (req.host) {
+            i.spec.tls[0].hosts = [req.host];
+        }
+    }
     return i;
 }
 

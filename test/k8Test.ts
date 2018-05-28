@@ -667,6 +667,7 @@ describe("k8", () => {
                 port: 5510,
                 path: "/bush/kate/hounds-of-love/cloudbusting",
                 host: "emi.com",
+                tlsSecret: "emi-com",
             };
             const i = ingressTemplate(req);
             const e = {
@@ -700,6 +701,14 @@ describe("k8", () => {
                                     },
                                 ],
                             },
+                        },
+                    ],
+                    tls: [
+                        {
+                            hosts: [
+                                "emi.com",
+                            ],
+                            secretName: "emi-com",
                         },
                     ],
                 },
