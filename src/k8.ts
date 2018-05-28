@@ -841,7 +841,7 @@ export function deploymentTemplate(req: KubeApplication): Deployment {
                             imagePullPolicy: "IfNotPresent",
                             resources: {
                                 limits: {
-                                    cpu: "300m",
+                                    cpu: "1000m",
                                     memory: "384Mi",
                                 },
                                 requests: {

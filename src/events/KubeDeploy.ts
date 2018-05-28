@@ -166,11 +166,11 @@ export function eligibleDeployGoal(goal: SdmGoal, commit: CommitForSdmGoal): Han
     }
     const atmName = "@atomist/k8-automation";
     if (goal.fulfillment.name !== atmName) {
-        return { code: 1, message: `SDM goal fulfillment name '${goal.fulfillment.name}' is not '${atmName}` };
+        return { code: 1, message: `SDM goal fulfillment name '${goal.fulfillment.name}' is not '${atmName}'` };
     }
     const atmMethod = "side-effect";
     if (goal.fulfillment.method !== atmMethod) {
-        return { code: 1, message: `SDM goal fulfillment method '${goal.fulfillment.method}' is not '${atmMethod}` };
+        return { code: 1, message: `SDM goal fulfillment method '${goal.fulfillment.method}' is not '${atmMethod}'` };
     }
     if (goal.state !== "requested") {
         return { code: 1, message: `SDM goal state '${goal.state}' is not 'requested'` };
