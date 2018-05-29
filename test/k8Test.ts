@@ -667,6 +667,7 @@ describe("k8", () => {
                 port: 5510,
                 path: "/bush/kate/hounds-of-love/cloudbusting",
                 host: "emi.com",
+                protocol: "https",
                 tlsSecret: "emi-com",
             };
             const i = ingressTemplate(req);
@@ -790,6 +791,8 @@ describe("k8", () => {
                 port: 6245,
                 path: "/kate-bush/dream-of-sheep",
                 host: "emi.com",
+                protocol: "https",
+                tlsSecret: "emi-com",
             };
             const ip = ingressPatch(i, pReq);
             const e = {
@@ -821,6 +824,14 @@ describe("k8", () => {
                                     },
                                 ],
                             },
+                        },
+                    ],
+                    tls: [
+                        {
+                            hosts: [
+                                "emi.com",
+                            ],
+                            secretName: "emi-com",
                         },
                     ],
                 },
@@ -902,6 +913,79 @@ describe("k8", () => {
                 path: "/bush/kate/hounds-of-love/cloudbusting",
             };
             assert.throws(() => ingressPatch(i, pReq), /Cannot use path/);
+        });
+
+        it("should add to tls", () => {
+            const req: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "cloudbusting",
+                image: "gcr.io/kate-bush/hounds-of-love/cloudbusting:5.5.10",
+                port: 5510,
+                path: "/bush/kate/hounds-of-love/cloudbusting",
+                host: "kate.emi.com",
+                protocol: "https",
+                tlsSecret: "star-emi-com",
+            };
+            const i = ingressTemplate(req);
+            const pReq: KubeApplication = {
+                teamId: "KAT3BU5H",
+                environment: "new-wave",
+                ns: "hounds-of-love",
+                name: "and-dream-of-sheep",
+                image: "gcr.io/kate-bush/hounds-of-love/sheep:6.2.45",
+                port: 6245,
+                path: "/kate-bush/dream-of-sheep",
+                host: "kate-bush.emi.com",
+                protocol: "https",
+                tlsSecret: "star-emi-com",
+            };
+            const ip = ingressPatch(i, pReq);
+            const e = {
+                spec: {
+                    rules: [
+                        {
+                            host: req.host,
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: req.name,
+                                            servicePort: "http",
+                                        },
+                                        path: req.path,
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            host: pReq.host,
+                            http: {
+                                paths: [
+                                    {
+                                        backend: {
+                                            serviceName: pReq.name,
+                                            servicePort: "http",
+                                        },
+                                        path: pReq.path,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    tls: [
+                        {
+                            hosts: [
+                                "kate.emi.com",
+                                "kate-bush.emi.com",
+                            ],
+                            secretName: "star-emi-com",
+                        },
+                    ],
+                },
+            };
+            assert.deepStrictEqual(ip, e);
         });
 
     });

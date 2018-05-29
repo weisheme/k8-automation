@@ -964,7 +964,7 @@ export function endpointBaseUrl(req: KubeApplication): string {
  * Create a ingress HTTP path.
  *
  * @param req ingress request
- * @return ingress patch
+ * @return ingress HTTP path
  */
 function httpIngressPath(req: KubeApplication): HTTPIngressPath {
     const httpPath: HTTPIngressPath = {
@@ -981,7 +981,7 @@ function httpIngressPath(req: KubeApplication): HTTPIngressPath {
  * Create the ingress for a deployment namespace.
  *
  * @param req ingress request
- * @return service resource for ingress to use
+ * @return ingress template with single rule
  */
 export function ingressTemplate(req: KubeApplication): Ingress {
     const httpPath: HTTPIngressPath = httpIngressPath(req);
@@ -1065,6 +1065,26 @@ export function ingressPatch(ing: Ingress, req: KubeApplication): Partial<Ingres
         rules[ruleIndex] = rule;
     }
     const patch: Partial<Ingress> = { spec: { rules } };
+    if (req.tlsSecret) {
+        const tls = (ing && ing.spec && ing.spec.tls) ? ing.spec.tls : [];
+        const tlsIndex = tls.findIndex(t => t.secretName === req.tlsSecret);
+        if (tlsIndex < 0) {
+            const t: IngressTLS = {
+                secretName: req.tlsSecret,
+            };
+            if (req.host) {
+                t.hosts = [req.host];
+            }
+            tls.push(t);
+        } else {
+            if (req.host) {
+                if (!tls[tlsIndex].hosts.some(h => h === req.host)) {
+                    tls[tlsIndex].hosts.push(req.host);
+                }
+            }
+        }
+        patch.spec.tls = tls;
+    }
     return patch;
 }
 
