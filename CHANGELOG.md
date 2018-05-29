@@ -26,6 +26,7 @@ Helm release
 -   Support replicas in SDM goal data
 -   Helm charts
 -   Support for TLS secrets in ingress
+-   URL when updating goal status
 
 ## [0.7.3][] - 2018-05-01
 

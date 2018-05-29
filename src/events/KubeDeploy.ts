@@ -136,6 +136,10 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
                                 state: "success",
                                 description: `Deployed to Kubernetes namespace \`${kubeApp.ns}\``,
                             };
+                            if (kubeApp.path && kubeApp.host) {
+                                const scheme = (kubeApp.protocol) ? kubeApp.protocol : "http";
+                                params.url = `${scheme}://${kubeApp.host}${kubeApp.path}`;
+                            }
                             return updateGoal(ctx, sdmGoal, params)
                                 .then(() => Success, err => {
                                     const message = `Successfully deployed ${depName} to Kubernetes, but failed to ` +
