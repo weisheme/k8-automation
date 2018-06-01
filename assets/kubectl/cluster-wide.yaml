@@ -14,18 +14,6 @@ metadata:
   labels:
     owner: atomist
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: k8-automation
-  labels:
-    owner: atomist
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: k8-automation-serviceaccount
-  namespace: k8-automation
----
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:

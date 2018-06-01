@@ -104,7 +104,7 @@ GitHub token with "read:org" scopes for a user within the GitHub
 organization linked to your Atomist workspace.
 
 ```
-$ kubectl apply -f https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kubectl/cluster-wide.yaml
+$ kubectl apply --filename=https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kubectl/cluster-wide.yaml
 $ kubectl create secret --namespace=k8-automation generic automation \
     --from-literal=config='{"teamIds":["WORKSPACE_ID"],"token":"TOKEN"}'
 ```
