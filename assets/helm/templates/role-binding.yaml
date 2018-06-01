@@ -1,0 +1,65 @@
+{{- if .Values.rbac.create -}}
+{{- if eq .Values.config.kubernetes.mode "cluster" -}}
+{{- if .Values.config.kubernetes.namespaces -}}
+{{- range .Values.config.kubernetes.namespaces -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: {{ template "k8-automation.fullname" $ }}
+  namespace: {{ . }}
+  labels:
+    app: {{ template "k8-automation.name" $ }}
+    chart: {{ template "k8-automation.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "k8-automation.serviceAccountName" $ }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "k8-automation.fullname" $ }}
+{{ end -}}
+{{- else -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ template "k8-automation.fullname" . }}
+  labels:
+    app: {{ template "k8-automation.name" . }}
+    chart: {{ template "k8-automation.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "k8-automation.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "k8-automation.fullname" . }}
+{{ end -}}
+{{- else -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: {{ template "k8-automation.fullname" . }}
+  labels:
+    app: {{ template "k8-automation.name" . }}
+    chart: {{ template "k8-automation.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "k8-automation.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ template "k8-automation.fullname" . }}
+{{- end }}
+{{ end -}}
