@@ -59,10 +59,16 @@ export class KubeDeploy implements HandleEvent<SdmGoalSub.Subscription> {
     public environment: string;
 
     /** cluster or namespace mode, default is cluster */
-    @Value("kubernetes.mode")
-    public mode: "cluster" | "namespace";
+    @Value({
+        path: "kubernetes.mode",
+        required: false,
+    })
+    public mode: "cluster" | "namespace" = "cluster";
 
-    @Value("kubernetes.namespaces")
+    @Value({
+        path: "kubernetes.namespaces",
+        required: false,
+    })
     public namespaces: string[];
 
     public handle(ev: EventFired<SdmGoalSub.Subscription>, ctx: HandlerContext): Promise<HandlerResult> {
@@ -203,10 +209,9 @@ export function validateSdmGoal(sdmGoal: SdmGoal, kd: KubeDeploy): KubeApplicati
         return undefined;
     }
     kubeApp.ns = kubeApp.ns || "default";
-    kd.mode = kd.mode || "cluster";
     const podNs = process.env.POD_NAMESPACE;
     if (kd.mode === "cluster") {
-        if (kd.namespaces && !kd.namespaces.includes(kubeApp.ns)) {
+        if (kd.namespaces && kd.namespaces.length > 0 && !kd.namespaces.includes(kubeApp.ns)) {
             logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not in managed ` +
                 `namespaces '${kd.namespaces.join(",")}'`);
             return undefined;
