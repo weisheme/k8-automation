@@ -210,18 +210,19 @@ export function validateSdmGoal(sdmGoal: SdmGoal, kd: KubeDeploy): KubeApplicati
     }
     kubeApp.ns = kubeApp.ns || "default";
     const podNs = process.env.POD_NAMESPACE;
-    if (kd.mode === "cluster") {
-        if (kd.namespaces && kd.namespaces.length > 0 && !kd.namespaces.includes(kubeApp.ns)) {
-            logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not in managed ` +
-                `namespaces '${kd.namespaces.join(",")}'`);
+    if (kd.mode === "namespace") {
+        if (!podNs) {
+            throw new Error(`Kubernetes deploy requested but k8-automation is running in ` +
+                `namespace-scoped mode and the POD_NAMESPACE environment variable is not set`);
+        }
+        if (kubeApp.ns !== podNs) {
+            logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not the name as ` +
+                `k8-automation running in namespace-scoped mode '${podNs}'`);
             return undefined;
         }
-    } else if (!podNs) {
-        throw new Error(`Kubernetes deploy requested but k8-automation is running in ` +
-            `namespace-scoped mode and the POD_NAMESPACE environment variable is not set`);
-    } else if (kubeApp.ns !== podNs) {
-        logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not the name as ` +
-            `k8-automation running in namespace-scoped mode '${podNs}'`);
+    } else if (kd.namespaces && kd.namespaces.length > 0 && !kd.namespaces.includes(kubeApp.ns)) {
+        logger.info(`SDM goal data kubernetes namespace '${kubeApp.ns}' is not in managed ` +
+            `namespaces '${kd.namespaces.join(",")}'`);
         return undefined;
     }
     return kubeApp;
