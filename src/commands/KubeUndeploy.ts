@@ -27,7 +27,6 @@ import {
     Tags,
 } from "@atomist/automation-client";
 import * as appRoot from "app-root-path";
-import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
 import * as path from "path";
 
