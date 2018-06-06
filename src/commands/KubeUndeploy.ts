@@ -26,9 +26,7 @@ import {
     Success,
     Tags,
 } from "@atomist/automation-client";
-import * as appRoot from "app-root-path";
 import * as k8 from "kubernetes-client";
-import * as path from "path";
 
 import { preErrMsg } from "../error";
 import {
