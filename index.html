@@ -1,0 +1,433 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@atomist/k8-automation</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.js" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">@atomist/k8-automation</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-only-exported" />
+							<label class="tsd-widget" for="tsd-filter-only-exported">Only exported</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="globals.html">Globals</a>
+				</li>
+			</ul>
+			<h1> @atomist/k8-automation</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<h1 id="-atomist-k8-automation">@atomist/k8-automation</h1>
+				<p><a href="https://badge.fury.io/js/%40atomist%2Fk8-automation"><img src="https://badge.fury.io/js/%40atomist%2Fk8-automation.svg" alt="npm version"></a>
+				<a href="https://hub.docker.com/r/atomist/k8-automation/"><img src="https://img.shields.io/docker/pulls/atomist/k8-automation.svg" alt="Docker Pulls"></a></p>
+				<p>This repository contains automations for deploying applications to
+					Kubernetes using the <a href="https://atomist.com/" title="Atomist - How Teams Deliver Software">Atomist</a> API.  Currently, deploying
+					Docker images as deployments with optional services and ingress rules
+				is supported.</p>
+				<p>This project uses the <a href="https://github.com/atomist/automation-client-ts" title="@atomist/automation-client Node Module"><code>@atomist/automation-client</code></a> and
+					<a href="https://github.com/atomist/github-sdm" title="@atomist/sdm Node Module"><code>@atomist/sdm</code></a> node modules to implement a local client that
+					connects to the Atomist API and executes goals on behalf of a software
+				delivery machine.</p>
+				<h2 id="prerequisites">Prerequisites</h2>
+				<p>Below are brief instructions on how to get started running this
+					project yourself.  If you just want to use the functionality this
+				project provides, see the <a href="https://docs.atomist.com/" title="Atomist User Guide">Atomist documentation</a>.</p>
+				<h3 id="atomist-workspace">Atomist workspace</h3>
+				<p>You need an Atomist workspace.  If you do not already have an Atomist
+					workspace, you can sign up with Atomist at
+					<a href="https://app.atomist.com/" title="Atomist Web Interface">https://app.atomist.com/</a>.  See the <a href="https://docs.atomist.com/user/" title="Atomist User Guide">Atomist User
+					Guide</a> for detailed instructions on how to sign up with
+				Atomist.</p>
+				<h3 id="kubernetes">Kubernetes</h3>
+				<p>This automation works with <a href="https://kubernetes.io/" title="Kubernetes">Kubernetes</a>, so you need a
+					Kubernetes cluster with a functioning ingress controller, such as
+				<a href="https://github.com/kubernetes/ingress-nginx" title="Ingress nginx">ingress-nginx</a>.</p>
+				<p>If you do not have access to a Kubernetes cluster, you can create one
+					on your local system using <a href="https://kubernetes.io/docs/getting-started-guides/minikube/" title="Minikube">minikube</a>.  Once you have minikube
+					running, you can create an ingress controller in the cluster using the
+				ingress add-on.</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> minikube start</span>
+<span class="hljs-meta">$</span><span class="bash"> minikube addons <span class="hljs-built_in">enable</span> ingress</span>
+</code></pre>
+				<h2 id="configuration">Configuration</h2>
+				<p>You can run k8-automation in either &quot;cluster-wide&quot; mode or
+					&quot;namespace-scoped&quot; mode.  In cluster-wide mode, k8-automation is able
+					to deploy and update applications in any namespace but it requires a
+					user with cluster-admin role privileges to install it.  If you only
+					have access to admin role privileges in a namespace, you can install
+					k8-automation in namespace-scoped mode, where it will only be able to
+				deploy and update resources in that namespace.</p>
+				<h2 id="running">Running</h2>
+				<p>See the <a href="https://docs.atomist.com/user/kubernetes/" title="Atomist - Kubernetes">Atomist Kubernetes documentation</a> for detailed
+					instructions on using Atomist with Kubernetes.  Briefly, if you
+					already have an <a href="https://docs.atomist.com/user/" title="Atomist - Getting Started">Atomist workspace</a>, you can
+					run the following commands to create the necessary resources in your
+					Kubernetes cluster.  Replace <code>WORKSPACE_ID</code> with your Atomist
+					workspace/team ID and <code>TOKEN</code> with a GitHub token with &quot;read:org&quot;
+					scopes for a user within the GitHub organization linked to your
+				Atomist workspace.</p>
+				<pre><code>$ kubectl apply <span class="hljs-attribute">--filename</span>=https://raw.githubusercontent.com/atomist/k8-automation/master/assets/kubectl/cluster-wide.yaml
+$ kubectl create<span class="hljs-built_in"> secret </span><span class="hljs-attribute">--namespace</span>=k8-automation generic automation \
+    <span class="hljs-attribute">--from-literal</span>=config='{<span class="hljs-string">"teamIds"</span>:[<span class="hljs-string">"WORKSPACE_ID"</span>],<span class="hljs-string">"token"</span>:<span class="hljs-string">"TOKEN"</span>}'
+</code></pre><h2 id="sdm-interface">SDM interface</h2>
+				<p>The KubeDeploy event handler triggers off an SDM Goal with the
+				following properties:</p>
+				<table>
+					<thead>
+						<tr>
+							<th>JSON Path</th>
+							<th>Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>fulfillment.name</code></td>
+							<td>@atomist/k8-automation</td>
+						</tr>
+						<tr>
+							<td><code>fulfillment.method</code></td>
+							<td>side-effect</td>
+						</tr>
+						<tr>
+							<td><code>state</code></td>
+							<td>requested</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>In addition, it expects the SDM Goal to have a <code>data</code> property that
+					when parsed as JSON has a <code>kubernetes</code> property whose value is an
+				object with the following properties:</p>
+				<table>
+					<thead>
+						<tr>
+							<th>Property</th>
+							<th>Required</th>
+							<th>Description</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>name</code></td>
+							<td>Yes</td>
+							<td>Name of the resources that will be created</td>
+						</tr>
+						<tr>
+							<td><code>environment</code></td>
+							<td>Yes</td>
+							<td>Must equal the value of the running k8-automation instance&#39;s <code>configuration.environment</code></td>
+						</tr>
+						<tr>
+							<td><code>ns</code></td>
+							<td>No</td>
+							<td>Namespace to create the resources in, default is &quot;default&quot;</td>
+						</tr>
+						<tr>
+							<td><code>imagePullSecret</code></td>
+							<td>No</td>
+							<td>Name of the Kubernetes image pull secret, if omitted the deployment spec is not provided an image pull secret</td>
+						</tr>
+						<tr>
+							<td><code>port</code></td>
+							<td>No</td>
+							<td>Port the container service listens on, if omitted the deployment spec will have no configured liveness or readiness probe and no service will be created</td>
+						</tr>
+						<tr>
+							<td><code>path</code></td>
+							<td>No</td>
+							<td>Absolute path under the hostname the ingress controller should use for this service, if omitted no ingress rule is created</td>
+						</tr>
+						<tr>
+							<td><code>host</code></td>
+							<td>No</td>
+							<td>Host name to use in ingress rule, only has effect if <code>path</code> is provided, if omitted when <code>path</code> is provided, the rule is created under the wildcard host</td>
+						</tr>
+						<tr>
+							<td><code>protocol</code></td>
+							<td>No</td>
+							<td>Scheme to use when setting the URL for the service endpoint, &quot;https&quot; or &quot;http&quot;, default is &quot;http&quot;</td>
+						</tr>
+						<tr>
+							<td><code>deploymentSpec</code></td>
+							<td>No</td>
+							<td>Stringified JSON Kubernetes deployment spec to overlay on top of default deployment spec, it only needs to contain the properties you want to add or override from the default</td>
+						</tr>
+						<tr>
+							<td><code>serviceSpec</code></td>
+							<td>No</td>
+							<td>Stringified JSON Kubernetes service spec to overlay on top of default service spec, it only needs to contain the properties you want to add or override from the default</td>
+						</tr>
+					</tbody>
+				</table>
+				<h2 id="support">Support</h2>
+				<p>General support questions should be discussed in the <code>#support</code>
+					channel in our community Slack team
+				at <a href="https://join.atomist.com/" title="Atomist Community Slack">atomist-community.slack.com</a>.</p>
+				<p>If you find a problem, please create an <a href="https://github.com/atomist/k8-automation/issues">issue</a>.</p>
+				<h2 id="development">Development</h2>
+				<p>Before developing this project, you will need to install Node.js and
+				configure your environment.</p>
+				<h3 id="node-js">Node.js</h3>
+				<p>You will need to have <a href="https://nodejs.org/" title="Node.js">Node.js</a> installed.  To verify that the
+				right versions are installed, please run:</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> node -v</span>
+v9.7.1
+<span class="hljs-meta">$</span><span class="bash"> npm -v</span>
+5.6.0
+</code></pre>
+				<p>The <code>node</code> version should be 8 or greater and the <code>npm</code> version should
+				be 5 or greater.</p>
+				<h3 id="cloning-the-repository-and-installing-dependencies">Cloning the repository and installing dependencies</h3>
+				<p>To get started run the following commands to clone the project,
+				install its dependencies, and build the project:</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> git <span class="hljs-built_in">clone</span> git@github.com:atomist/k8-automation.git</span>
+<span class="hljs-meta">$</span><span class="bash"> <span class="hljs-built_in">cd</span> k8-automation</span>
+<span class="hljs-meta">$</span><span class="bash"> npm install</span>
+<span class="hljs-meta">$</span><span class="bash"> npm run build</span>
+</code></pre>
+				<h3 id="configuring-your-environment">Configuring your environment</h3>
+				<p>If this is the first time you will be running an Atomist API client
+					locally, you should first configure your system using the <code>atomist</code>
+				script:</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> `npm bin`/atomist config</span>
+</code></pre>
+				<p>The script does two things: records what Slack team you want your
+					automations running in and creates
+					a <a href="https://github.com/settings/tokens" title="GitHub Personal Access Tokens">GitHub personal access token</a> with &quot;repo&quot; and &quot;read:org&quot;
+				scopes.</p>
+				<p>The script will prompt you for your Atomist workspace/team ID, or you
+					can supply it using the <code>--team TEAM_ID</code> command-line option.  You can
+					get your Atomist team ID from the settings page for your Atomist
+				workspace or by typing <code>team</code> in a DM to the Atomist bot.</p>
+				<p>The script will prompt you for your GitHub credentials.  It needs them
+					to create the GitHub personal access token.  Atomist does not store
+					your credentials and only writes the generated token to your local
+				machine.</p>
+				<p>The Atomist API client authenticates using a GitHub personal access
+					token.  The Atomist API uses the token to confirm you are who you say
+					you are and are in a GitHub organization connected to the Slack team
+					in which you are running the automations.  In addition, it uses the
+				token when performing any operations that access the GitHub API.</p>
+				<h3 id="running-locally">Running locally</h3>
+				<p>You can run this automation client locally, allowing you to change the
+					source code of this project and immediately see the effects in your
+				environment with the following command</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> npm run autostart</span>
+</code></pre>
+				<p>To run in a more traditional manner, build the project and then simple
+				start it.</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> npm run build</span>
+<span class="hljs-meta">$</span><span class="bash"> npm start</span>
+</code></pre>
+				<p>To download and run the Docker image of this project, run the
+				following command</p>
+				<pre><code class="lang-console"><span class="hljs-meta">$</span><span class="bash"> docker run --rm -e GITHUB_TOKEN=YOUR_TOKEN -e ATOMIST_TEAMS=TEAM_ID \</span>
+    atomist/k8-automation:VERSION
+</code></pre>
+				<p>replacing <code>YOUR_TOKEN</code> and <code>TEAM_ID</code> with the token and team ID from
+					your <code>~/.atomist/client.config.json</code> created by the <code>atomist config</code>
+					command and <code>VERSION</code> with the <a href="https://github.com/atomist/k8-automation/releases/latest">latest release of this repo</a>.
+					Note that this will not be running any code from your local machine
+				but the code in the Docker image.</p>
+				<h3 id="build-and-test">Build and Test</h3>
+				<table>
+					<thead>
+						<tr>
+							<th>Command</th>
+							<th>Reason</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>npm install</code></td>
+							<td>install all the required packages</td>
+						</tr>
+						<tr>
+							<td><code>npm run build</code></td>
+							<td>lint, compile, and test</td>
+						</tr>
+						<tr>
+							<td><code>npm start</code></td>
+							<td>start the Atomist automation client</td>
+						</tr>
+						<tr>
+							<td><code>npm run autostart</code></td>
+							<td>run the client, refreshing when files change</td>
+						</tr>
+						<tr>
+							<td><code>npm run lint</code></td>
+							<td>run tslint against the TypeScript</td>
+						</tr>
+						<tr>
+							<td><code>npm run compile</code></td>
+							<td>compile all TypeScript into JavaScript</td>
+						</tr>
+						<tr>
+							<td><code>npm test</code></td>
+							<td>run tests and ensure everything is working</td>
+						</tr>
+						<tr>
+							<td><code>npm run autotest</code></td>
+							<td>run tests continuously</td>
+						</tr>
+						<tr>
+							<td><code>npm run clean</code></td>
+							<td>remove stray compiled JavaScript files and build directory</td>
+						</tr>
+					</tbody>
+				</table>
+				<h3 id="release">Release</h3>
+				<p>Releases are managed by the <a href="https://github.com/atomist/atomist-sdm" title="Atomist Software Delivery Machine">Atomist SDM</a>.  Press the
+				&quot;Release&quot; button in the Atomist dashboard or Slack.</p>
+				<hr>
+				<p>Created by <a href="https://atomist.com/" title="Atomist - How Teams Deliver Software">Atomist</a>.
+				Need Help?  <a href="https://join.atomist.com/" title="Atomist Community Slack">Join our Slack team</a>.</p>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="globals.html"><em>Globals</em></a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_atomist_config_.html">"atomist.config"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_commands_helloautomation_.html">"commands/<wbr>Hello<wbr>Automation"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_commands_kubeundeploy_.html">"commands/<wbr>Kube<wbr>Undeploy"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_error_.html">"error"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_events_kubedeploy_.html">"events/<wbr>Kube<wbr>Deploy"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_k8_.html">"k8"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_typings_types_.html">"typings/types"</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-module"><span class="tsd-kind-icon">Module</span></li>
+				<li class="tsd-kind-object-literal"><span class="tsd-kind-icon">Object literal</span></li>
+				<li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li>
+				<li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li>
+				<li class="tsd-kind-function tsd-has-type-parameter"><span class="tsd-kind-icon">Function with type parameter</span></li>
+				<li class="tsd-kind-index-signature"><span class="tsd-kind-icon">Index signature</span></li>
+				<li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-enum"><span class="tsd-kind-icon">Enumeration</span></li>
+				<li class="tsd-kind-enum-member"><span class="tsd-kind-icon">Enumeration member</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-enum"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-enum"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-interface"><span class="tsd-kind-icon">Interface</span></li>
+				<li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-interface"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-interface"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-interface"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-class"><span class="tsd-kind-icon">Class</span></li>
+				<li class="tsd-kind-class tsd-has-type-parameter"><span class="tsd-kind-icon">Class with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class"><span class="tsd-kind-icon">Accessor</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-class"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static property</span></li>
+				<li class="tsd-kind-call-signature tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static method</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="http://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="assets/js/search.js"><' + '/script>');</script>
+</body>
+</html>
