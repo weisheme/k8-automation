@@ -20,7 +20,7 @@
   "dependencies": {
     "@atomist/automation-client": "https://r.atomist.com/BJxzuM1V20G",
     "@atomist/automation-client-ext-logzio": "https://r.atomist.com/BJvleYiC20f",
-    "@atomist/sdm": "https://r.atomist.com/B1IW6KqC3Cf",
+    "@atomist/sdm": "0.3.0-nortissej.break-out-api.20180622000216",
     "app-root-path": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
     "kubernetes-client": "^5.3.0",
@@ -28,7 +28,8 @@
     "logzio-nodejs": "^0.4.10",
     "promise-retry": "^1.1.1",
     "serialize-error": "^2.1.0",
-    "winston-logzio": "^1.0.6"
+    "winston-logzio": "^1.0.6",
+    "@atomist/sdm-core": "0.3.1-20180622172537"
   },
   "devDependencies": {
     "@types/app-root-path": "^1.2.4",

@@ -18,7 +18,7 @@ import "mocha";
 import * as assert from "power-assert";
 
 import { Success } from "@atomist/automation-client";
-import { SdmGoal } from "@atomist/sdm/ingesters/sdmGoalIngester";
+import { SdmGoal } from "@atomist/sdm/api/goal/SdmGoal";
 
 import {
     CommitForSdmGoal,

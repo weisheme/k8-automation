@@ -32,7 +32,7 @@ import {
     UpdateSdmGoalParams,
 } from "@atomist/sdm/common/delivery/goals/storeGoals";
 import { fetchCommitForSdmGoal } from "@atomist/sdm/common/delivery/goals/support/fetchGoalsOnCommit";
-import { SdmGoal } from "@atomist/sdm/ingesters/sdmGoalIngester";
+import { SdmGoal } from "@atomist/sdm/api/goal/SdmGoal";
 import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
