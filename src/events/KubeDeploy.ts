@@ -27,12 +27,12 @@ import {
     Tags,
     Value,
 } from "@atomist/automation-client";
+import { SdmGoal } from "@atomist/sdm/api/goal/SdmGoal";
 import {
     updateGoal,
     UpdateSdmGoalParams,
 } from "@atomist/sdm/common/delivery/goals/storeGoals";
 import { fetchCommitForSdmGoal } from "@atomist/sdm/common/delivery/goals/support/fetchGoalsOnCommit";
-import { SdmGoal } from "@atomist/sdm/api/goal/SdmGoal";
 import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
 import * as k8 from "kubernetes-client";
