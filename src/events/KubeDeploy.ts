@@ -27,6 +27,8 @@ import {
     Tags,
     Value,
 } from "@atomist/automation-client";
+import { fetchCommitForSdmGoal } from "@atomist/sdm/api-helper/goal/fetchGoalsOnCommit";
+import { updateGoal, UpdateSdmGoalParams } from "@atomist/sdm/api-helper/goal/storeGoals";
 import { SdmGoal } from "@atomist/sdm/api/goal/SdmGoal";
 import * as appRoot from "app-root-path";
 import * as stringify from "json-stringify-safe";
@@ -39,8 +41,6 @@ import {
     upsertApplication,
 } from "../k8";
 import { SdmGoalSub } from "../typings/types";
-import { fetchCommitForSdmGoal } from "@atomist/sdm/api-helper/goal/fetchGoalsOnCommit";
-import { updateGoal, UpdateSdmGoalParams } from "@atomist/sdm/api-helper/goal/storeGoals";
 
 export interface CommitForSdmGoal {
     image?: {
